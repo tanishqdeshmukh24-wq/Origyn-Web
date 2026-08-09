@@ -440,3 +440,52 @@ section {
     }
 
 }
+header.scrolled {
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+}
+#story {
+    min-height: 100vh;
+    padding: 120px 7%;
+    position: relative;
+    overflow: hidden;
+}
+
+.story-content {
+    max-width: 1200px;
+    margin: auto;
+}
+
+.story-content h2 {
+    font-size: clamp(60px, 9vw, 130px);
+    line-height: 0.9;
+    letter-spacing: -5px;
+}
+
+.delivery-scene {
+    position: relative;
+    height: 500px;
+    margin-top: 80px;
+    overflow: hidden;
+}
+
+.delivery-man {
+    position: absolute;
+    left: 10%;
+    bottom: 80px;
+    font-size: 80px;
+}
+
+.delivery-box {
+    position: absolute;
+    left: calc(10% + 70px);
+    bottom: 80px;
+    font-size: 45px;
+}
+
+.rock {
+    position: absolute;
+    left: 55%;
+    bottom: 75px;
+    font-size: 55px;
+}
