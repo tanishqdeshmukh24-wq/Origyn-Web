@@ -291,3 +291,152 @@ footer {
     color: #999999;
     font-size: 15px;
 }
+.about-heading {
+    max-width: 900px;
+}
+
+.about-heading h2 {
+    font-size: clamp(50px, 7vw, 100px);
+    line-height: 0.95;
+    letter-spacing: -4px;
+}
+
+.about-text {
+    max-width: 650px;
+    margin-top: 60px;
+    margin-left: auto;
+}
+
+.about-text p {
+    color: var(--gray);
+    font-size: 18px;
+    line-height: 1.7;
+    margin-bottom: 20px;
+}
+
+.about-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 30px;
+    margin-top: 100px;
+}
+
+.about-stat {
+    padding-top: 25px;
+    border-top: 1px solid #dddddd;
+}
+
+.about-stat span {
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.about-stat h3 {
+    margin-top: 20px;
+    font-size: 26px;
+}
+
+.about-stat p {
+    margin-top: 10px;
+    color: var(--gray);
+    font-size: 15px;
+}
+.contact-content {
+    max-width: 900px;
+}
+
+.contact-content h2 {
+    font-size: clamp(55px, 8vw, 110px);
+    line-height: 0.9;
+    letter-spacing: -5px;
+}
+
+.contact-content > p:not(.section-label) {
+    max-width: 550px;
+    margin-top: 30px;
+    color: var(--gray);
+    font-size: 18px;
+    line-height: 1.6;
+}
+
+.contact-button {
+    display: inline-block;
+    margin-top: 40px;
+    padding: 17px 30px;
+    border-radius: 50px;
+    background: var(--dark);
+    color: white;
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 500;
+    transition: transform 0.3s ease;
+}
+
+.contact-button:hover {
+    transform: translateY(-5px);
+}
+section {
+    scroll-margin-top: 90px;
+}
+@media (max-width: 800px) {
+
+    header {
+        padding: 20px;
+    }
+
+    nav {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .nav-links {
+        gap: 15px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    #home {
+        padding-top: 160px;
+    }
+
+    #home h1 {
+        letter-spacing: -3px;
+    }
+
+    .hero-buttons {
+        flex-direction: column;
+        width: 100%;
+        max-width: 280px;
+    }
+
+    #home button {
+        width: 100%;
+    }
+
+    #discover,
+    #sell,
+    #about,
+    #contact {
+        padding: 100px 7%;
+    }
+
+    .product-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .sell-steps {
+        grid-template-columns: 1fr;
+        gap: 40px;
+    }
+
+    .about-text {
+        margin-left: 0;
+    }
+
+    .about-stats {
+        grid-template-columns: 1fr;
+        gap: 40px;
+    }
+
+}
