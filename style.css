@@ -158,3 +158,136 @@ footer {
 #contact {
     background: #f5f5f5;
 }
+.section-heading {
+    max-width: 800px;
+    margin-bottom: 60px;
+}
+
+.section-label {
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    margin-bottom: 15px;
+}
+
+.section-heading h2 {
+    margin-bottom: 20px;
+}
+
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 25px;
+}
+
+.product-card {
+    background: #ffffff;
+    border: 1px solid #e5e5e5;
+    border-radius: 24px;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.product-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
+}
+
+.product-image {
+    height: 250px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #eeeeee;
+    font-size: 50px;
+    font-weight: 800;
+}
+
+.product-content {
+    padding: 30px;
+}
+
+.product-category {
+    color: var(--gray);
+    font-size: 13px;
+    margin-bottom: 10px;
+}
+
+.product-content h3 {
+    font-size: 26px;
+    margin-bottom: 12px;
+}
+
+.product-content p {
+    color: var(--gray);
+    font-size: 15px;
+    margin-bottom: 25px;
+}
+
+.product-content a {
+    color: var(--dark);
+    text-decoration: none;
+    font-weight: 600;
+}
+.sell-content {
+    max-width: 850px;
+}
+
+.sell-content h2 {
+    font-size: clamp(50px, 7vw, 100px);
+    line-height: 0.95;
+    letter-spacing: -4px;
+    margin-bottom: 30px;
+}
+
+.sell-content > p:not(.section-label) {
+    max-width: 600px;
+    color: #bbbbbb;
+    font-size: 18px;
+    line-height: 1.6;
+}
+
+.sell-content button {
+    margin-top: 35px;
+    padding: 16px 28px;
+    border: none;
+    border-radius: 50px;
+    background: var(--accent);
+    color: white;
+    font-size: 15px;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+.sell-content button:hover {
+    transform: translateY(-4px);
+}
+
+.sell-steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 30px;
+    margin-top: 100px;
+}
+
+.sell-step {
+    padding-top: 25px;
+    border-top: 1px solid #444444;
+}
+
+.sell-step span {
+    font-size: 13px;
+    color: var(--accent);
+}
+
+.sell-step h3 {
+    margin-top: 20px;
+    font-size: 24px;
+}
+
+.sell-step p {
+    margin-top: 10px;
+    color: #999999;
+    font-size: 15px;
+}
