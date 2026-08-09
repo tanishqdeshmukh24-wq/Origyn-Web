@@ -29,6 +29,35 @@ gsap.from("#discover .section-heading", {
         toggleActions: "play none none reverse"
     }
 });
+gsap.fromTo(
+    "#explore-btn",
+    {
+        y: 30,
+        opacity: 0
+    },
+    {
+        y: 0,
+        opacity: 1,
+        duration: 0.8,
+        delay: 1.8,
+        ease: "power3.out"
+    }
+);
+
+gsap.fromTo(
+    "#sell-btn",
+    {
+        y: 30,
+        opacity: 0
+    },
+    {
+        y: 0,
+        opacity: 1,
+        duration: 0.8,
+        delay: 2,
+        ease: "power3.out"
+    }
+);
 const cardTimeline = gsap.timeline({
     scrollTrigger: {
         trigger: ".product-grid",
@@ -134,4 +163,71 @@ ScrollTrigger.create({
         }
 
     }
+});
+const boxOpen = gsap.timeline({
+    paused: true
+});
+
+boxOpen
+    .to(".delivery-box", {
+        rotation: -15,
+        scale: 1.15,
+        duration: 0.25,
+        ease: "power2.out"
+    })
+    .to(".delivery-box", {
+        rotation: 15,
+        scale: 1,
+        duration: 0.25,
+        ease: "power2.inOut"
+    });
+ScrollTrigger.create({
+    trigger: "#story",
+    start: "top top",
+    end: "+=2000",
+
+    onUpdate: (self) => {
+        if (self.progress > 0.70) {
+            boxOpen.play();
+        }
+    }
+});
+const techReveal = gsap.timeline({
+    paused: true
+});
+
+techReveal.fromTo(
+    ".tech-item",
+    {
+        y: 40,
+        opacity: 0,
+        scale: 0.8
+    },
+    {
+        y: 0,
+        opacity: 1,
+        scale: 1,
+        duration: 0.6,
+        stagger: 0.2,
+        ease: "back.out(1.7)"
+    }
+);
+ScrollTrigger.create({
+    trigger: "#story",
+    start: "top top",
+    end: "+=2000",
+
+    onUpdate: (self) => {
+        if (self.progress > 0.82) {
+            techReveal.play();
+        }
+    }
+});
+gsap.from(".nav-links a", {
+    y: -20,
+    opacity: 0,
+    duration: 0.6,
+    stagger: 0.1,
+    delay: 0.5,
+    ease: "power3.out"
 });

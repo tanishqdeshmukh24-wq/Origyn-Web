@@ -489,3 +489,133 @@ header.scrolled {
     bottom: 75px;
     font-size: 55px;
 }
+.tech-reveal {
+    position: absolute;
+    left: 65%;
+    bottom: 120px;
+    display: flex;
+    gap: 20px;
+}
+
+.tech-item {
+    width: 100px;
+    height: 100px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: white;
+    border-radius: 20px;
+
+    font-size: 20px;
+    font-weight: 700;
+
+    opacity: 0;
+    transform: translateY(40px) scale(0.8);
+}
+#explore-btn,
+#sell-btn {
+    transition: transform 0.25s ease;
+}
+
+#explore-btn:hover,
+#sell-btn:hover {
+    transform: translateY(-4px);
+}
+@media (max-width: 768px) {
+
+    /* Navbar */
+
+    nav {
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .nav-links {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 15px;
+    }
+
+
+    /* Hero */
+
+    #home {
+        min-height: 90vh;
+        text-align: center;
+        padding: 100px 20px 60px;
+    }
+
+    #home h1 {
+        font-size: clamp(42px, 12vw, 70px);
+        letter-spacing: -2px;
+    }
+
+    #home p {
+        font-size: 16px;
+    }
+
+
+    /* Hero buttons */
+
+    .hero-buttons {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .hero-buttons button {
+        width: min(280px, 90%);
+    }
+
+
+    /* Story */
+
+    #story {
+        padding: 80px 20px;
+    }
+
+    .story-content h2 {
+        font-size: clamp(50px, 14vw, 80px);
+        letter-spacing: -3px;
+    }
+
+    .delivery-scene {
+        height: 400px;
+        margin-top: 50px;
+    }
+
+    .delivery-man {
+        left: 5%;
+        font-size: 60px;
+    }
+
+    .delivery-box {
+        left: calc(5% + 55px);
+        font-size: 35px;
+    }
+
+    .rock {
+        left: 60%;
+        font-size: 45px;
+    }
+
+
+    /* Tech reveal */
+
+    .tech-reveal {
+        left: 50%;
+        transform: translateX(-50%);
+        gap: 10px;
+    }
+
+    .tech-item {
+        width: 75px;
+        height: 75px;
+        font-size: 15px;
+        border-radius: 15px;
+    }
+
+}
