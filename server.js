@@ -1,0 +1,18 @@
+{
+  "name": "origyn-backend",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "dev": "nodemon server.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.0",
+    "express": "^4.18.2",
+    "pg": "^8.11.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  }
+}
