@@ -1,10 +1,21 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* =========================================
+   ROOT
+   ========================================= */
+
 :root {
     --accent: #6c63ff;
     --dark: #111111;
     --light: #ffffff;
     --gray: #666666;
 }
+
+
+/* =========================================
+   RESET
+   ========================================= */
+
 * {
     margin: 0;
     padding: 0;
@@ -21,22 +32,36 @@ body {
     color: #111111;
 }
 
+
+/* =========================================
+   HEADER / NAVBAR
+   ========================================= */
+
 header {
     width: 100%;
     padding: 22px 5%;
+
     position: fixed;
     top: 0;
     left: 0;
+
     z-index: 1000;
+
     background: rgba(255, 255, 255, 0.75);
+
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
 }
 
+header.scrolled {
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+}
 
 nav {
     max-width: 1400px;
     margin: 0 auto;
+
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -48,83 +73,35 @@ nav {
     letter-spacing: -1.5px;
 }
 
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: 25px;
+}
+
 .nav-links a {
     position: relative;
+
     text-decoration: none;
     color: #111111;
+
     font-size: 14px;
     font-weight: 500;
+
     transition: opacity 0.3s ease;
 }
 
 .nav-links a:hover {
     opacity: 0.55;
 }
-#home {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    padding: 120px 20px 60px;
-}
 
-#home h1 {
-    max-width: 1000px;
-    font-size: clamp(52px, 8vw, 110px);
-    line-height: 0.92;
-    letter-spacing: -5px;
-    font-weight: 800;
-}
 
-#home p {
-    margin-top: 32px;
-    max-width: 620px;
-    font-size: 18px;
-    line-height: 1.6;
-    color: var(--gray);
-}
+/* =========================================
+   GENERAL SECTIONS
+   ========================================= */
 
-#home button {
-    padding: 16px 28px;
-    border: 1px solid #111111;
-    border-radius: 50px;
-    background: #111111;
-    color: #ffffff;
-    font-size: 15px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-#home button:last-child {
-    background: transparent;
-    color: #111111;
-}
-
-#home button:hover {
-    transform: translateY(-4px);
-}
-
-#home button:last-child:hover {
-    background: #111111;
-    color: #ffffff;
-}
-
-#home button:hover {
-    transform: translateY(-3px);
-    opacity: 0.8;
-}
-#discover,
-#sell,
-#about,
-#contact {
-    min-height: 70vh;
-    padding: 120px 10%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
+section {
+    scroll-margin-top: 90px;
 }
 
 section h2 {
@@ -137,11 +114,105 @@ section p {
     font-size: 18px;
     line-height: 1.6;
 }
-footer {
-    padding: 40px;
+
+
+/* =========================================
+   HOME / HERO
+   ========================================= */
+
+#home {
+    min-height: 100vh;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+
     text-align: center;
-    border-top: 1px solid #dddddd;
+
+    padding: 120px 20px 60px;
 }
+
+#home h1 {
+    max-width: 1000px;
+
+    font-size: clamp(52px, 8vw, 110px);
+    line-height: 0.92;
+    letter-spacing: -5px;
+    font-weight: 800;
+}
+
+#home p {
+    margin-top: 32px;
+
+    max-width: 620px;
+
+    font-size: 18px;
+    line-height: 1.6;
+
+    color: var(--gray);
+}
+
+.hero-buttons {
+    display: flex;
+    gap: 15px;
+    margin-top: 35px;
+}
+
+#home button {
+    padding: 16px 28px;
+
+    border: 1px solid #111111;
+    border-radius: 50px;
+
+    background: #111111;
+    color: #ffffff;
+
+    font-size: 15px;
+    font-weight: 500;
+
+    cursor: pointer;
+
+    transition:
+        transform 0.3s ease,
+        opacity 0.3s ease,
+        background 0.3s ease,
+        color 0.3s ease;
+}
+
+#home button:last-child {
+    background: transparent;
+    color: #111111;
+}
+
+#home button:hover {
+    transform: translateY(-4px);
+    opacity: 0.85;
+}
+
+#home button:last-child:hover {
+    background: #111111;
+    color: #ffffff;
+}
+
+
+/* =========================================
+   COMMON SECTION STYLING
+   ========================================= */
+
+#discover,
+#sell,
+#about,
+#contact {
+    min-height: 70vh;
+
+    padding: 120px 10%;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
 #discover {
     background: #f5f5f5;
 }
@@ -158,48 +229,132 @@ footer {
 #contact {
     background: #f5f5f5;
 }
+
 .section-heading {
     max-width: 800px;
     margin-bottom: 60px;
-}
-
-.section-label {
-    color: var(--accent);
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    margin-bottom: 15px;
 }
 
 .section-heading h2 {
     margin-bottom: 20px;
 }
 
-.product-grid {
+.section-label {
+    color: var(--accent);
+
+    font-size: 13px;
+    font-weight: 700;
+
+    letter-spacing: 2px;
+
+    margin-bottom: 15px;
+}
+
+
+/* =========================================
+   DISCOVER SECTION
+   ========================================= */
+
+/*
+   IMPORTANT:
+   The grid controls the card positions.
+   GSAP only changes opacity.
+*/
+
+.discover-grid {
+    width: 100%;
+
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+
     gap: 25px;
+
+    align-items: stretch;
+}
+
+.discover-card {
+    width: 100%;
+    min-width: 0;
+
+    min-height: 300px;
+
+    padding: 35px;
+
+    background: #ffffff;
+
+    border: 1px solid #e5e5e5;
+
+    border-radius: 24px;
+
+    overflow: hidden;
+
+    box-sizing: border-box;
+
+    /*
+       Prevents animation/layout conflicts.
+       We do NOT position these cards manually.
+    */
+
+    position: relative;
+
+    transition:
+        box-shadow 0.3s ease,
+        border-color 0.3s ease;
+}
+
+.discover-card:hover {
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
+
+    border-color: #d5d5d5;
+}
+
+
+/* =========================================
+   PRODUCT GRID
+   ========================================= */
+
+.product-grid {
+    width: 100%;
+
+    display: grid;
+
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+
+    gap: 25px;
+
+    align-items: stretch;
 }
 
 .product-card {
     background: #ffffff;
+
     border: 1px solid #e5e5e5;
+
     border-radius: 24px;
+
     overflow: hidden;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+
+    transition:
+        transform 0.3s ease,
+        box-shadow 0.3s ease;
 }
 
 .product-card:hover {
     transform: translateY(-8px);
+
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
 }
 
 .product-image {
     height: 250px;
+
     display: flex;
     align-items: center;
     justify-content: center;
+
     background: #eeeeee;
+
     font-size: 50px;
     font-weight: 800;
 }
@@ -210,290 +365,108 @@ footer {
 
 .product-category {
     color: var(--gray);
+
     font-size: 13px;
+
     margin-bottom: 10px;
 }
 
 .product-content h3 {
     font-size: 26px;
+
     margin-bottom: 12px;
 }
 
 .product-content p {
     color: var(--gray);
+
     font-size: 15px;
+
     margin-bottom: 25px;
 }
 
 .product-content a {
     color: var(--dark);
+
     text-decoration: none;
+
     font-weight: 600;
 }
-.sell-content {
-    max-width: 850px;
-}
 
-.sell-content h2 {
-    font-size: clamp(50px, 7vw, 100px);
-    line-height: 0.95;
-    letter-spacing: -4px;
-    margin-bottom: 30px;
-}
 
-.sell-content > p:not(.section-label) {
-    max-width: 600px;
-    color: #bbbbbb;
-    font-size: 18px;
-    line-height: 1.6;
-}
+/* =========================================
+   STORY SECTION
+   ========================================= */
 
-.sell-content button {
-    margin-top: 35px;
-    padding: 16px 28px;
-    border: none;
-    border-radius: 50px;
-    background: var(--accent);
-    color: white;
-    font-size: 15px;
-    cursor: pointer;
-    transition: transform 0.3s ease;
-}
-
-.sell-content button:hover {
-    transform: translateY(-4px);
-}
-
-.sell-steps {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 30px;
-    margin-top: 100px;
-}
-
-.sell-step {
-    padding-top: 25px;
-    border-top: 1px solid #444444;
-}
-
-.sell-step span {
-    font-size: 13px;
-    color: var(--accent);
-}
-
-.sell-step h3 {
-    margin-top: 20px;
-    font-size: 24px;
-}
-
-.sell-step p {
-    margin-top: 10px;
-    color: #999999;
-    font-size: 15px;
-}
-.about-heading {
-    max-width: 900px;
-}
-
-.about-heading h2 {
-    font-size: clamp(50px, 7vw, 100px);
-    line-height: 0.95;
-    letter-spacing: -4px;
-}
-
-.about-text {
-    max-width: 650px;
-    margin-top: 60px;
-    margin-left: auto;
-}
-
-.about-text p {
-    color: var(--gray);
-    font-size: 18px;
-    line-height: 1.7;
-    margin-bottom: 20px;
-}
-
-.about-stats {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 30px;
-    margin-top: 100px;
-}
-
-.about-stat {
-    padding-top: 25px;
-    border-top: 1px solid #dddddd;
-}
-
-.about-stat span {
-    color: var(--accent);
-    font-size: 13px;
-    font-weight: 700;
-}
-
-.about-stat h3 {
-    margin-top: 20px;
-    font-size: 26px;
-}
-
-.about-stat p {
-    margin-top: 10px;
-    color: var(--gray);
-    font-size: 15px;
-}
-.contact-content {
-    max-width: 900px;
-}
-
-.contact-content h2 {
-    font-size: clamp(55px, 8vw, 110px);
-    line-height: 0.9;
-    letter-spacing: -5px;
-}
-
-.contact-content > p:not(.section-label) {
-    max-width: 550px;
-    margin-top: 30px;
-    color: var(--gray);
-    font-size: 18px;
-    line-height: 1.6;
-}
-
-.contact-button {
-    display: inline-block;
-    margin-top: 40px;
-    padding: 17px 30px;
-    border-radius: 50px;
-    background: var(--dark);
-    color: white;
-    text-decoration: none;
-    font-size: 15px;
-    font-weight: 500;
-    transition: transform 0.3s ease;
-}
-
-.contact-button:hover {
-    transform: translateY(-5px);
-}
-section {
-    scroll-margin-top: 90px;
-}
-@media (max-width: 800px) {
-
-    header {
-        padding: 20px;
-    }
-
-    nav {
-        flex-direction: column;
-        gap: 15px;
-    }
-
-    .nav-links {
-        gap: 15px;
-        flex-wrap: wrap;
-        justify-content: center;
-    }
-
-    #home {
-        padding-top: 160px;
-    }
-
-    #home h1 {
-        letter-spacing: -3px;
-    }
-
-    .hero-buttons {
-        flex-direction: column;
-        width: 100%;
-        max-width: 280px;
-    }
-
-    #home button {
-        width: 100%;
-    }
-
-    #discover,
-    #sell,
-    #about,
-    #contact {
-        padding: 100px 7%;
-    }
-
-    .product-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .sell-steps {
-        grid-template-columns: 1fr;
-        gap: 40px;
-    }
-
-    .about-text {
-        margin-left: 0;
-    }
-
-    .about-stats {
-        grid-template-columns: 1fr;
-        gap: 40px;
-    }
-
-}
-header.scrolled {
-    background: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
-}
 #story {
     min-height: 100vh;
+
     padding: 120px 7%;
+
     position: relative;
+
     overflow: hidden;
 }
 
 .story-content {
     max-width: 1200px;
+
     margin: auto;
 }
 
 .story-content h2 {
     font-size: clamp(60px, 9vw, 130px);
+
     line-height: 0.9;
+
     letter-spacing: -5px;
 }
 
 .delivery-scene {
     position: relative;
+
     height: 500px;
+
     margin-top: 80px;
+
     overflow: hidden;
 }
 
 .delivery-man {
     position: absolute;
+
     left: 10%;
     bottom: 80px;
+
     font-size: 80px;
 }
 
 .delivery-box {
     position: absolute;
+
     left: calc(10% + 70px);
     bottom: 80px;
+
     font-size: 45px;
 }
 
 .rock {
     position: absolute;
+
     left: 55%;
     bottom: 75px;
+
     font-size: 55px;
 }
+
 .tech-reveal {
     position: absolute;
+
     left: 65%;
     bottom: 120px;
+
     display: flex;
+
     gap: 20px;
 }
 
@@ -505,15 +478,23 @@ header.scrolled {
     align-items: center;
     justify-content: center;
 
-    background: white;
+    background: #ffffff;
+
     border-radius: 20px;
 
     font-size: 20px;
     font-weight: 700;
 
     opacity: 0;
+
     transform: translateY(40px) scale(0.8);
 }
+
+
+/* =========================================
+   HERO BUTTON HOVER
+   ========================================= */
+
 #explore-btn,
 #sell-btn {
     transition: transform 0.25s ease;
@@ -523,18 +504,431 @@ header.scrolled {
 #sell-btn:hover {
     transform: translateY(-4px);
 }
+
+
+/* =========================================
+   SELL SECTION
+   ========================================= */
+
+.sell-content {
+    max-width: 850px;
+}
+
+.sell-content h2 {
+    font-size: clamp(50px, 7vw, 100px);
+
+    line-height: 0.95;
+
+    letter-spacing: -4px;
+
+    margin-bottom: 30px;
+}
+
+.sell-content > p:not(.section-label) {
+    max-width: 600px;
+
+    color: #bbbbbb;
+
+    font-size: 18px;
+
+    line-height: 1.6;
+}
+
+.sell-content button {
+    margin-top: 35px;
+
+    padding: 16px 28px;
+
+    border: none;
+
+    border-radius: 50px;
+
+    background: var(--accent);
+
+    color: white;
+
+    font-size: 15px;
+
+    cursor: pointer;
+
+    transition:
+        transform 0.3s ease,
+        box-shadow 0.3s ease;
+}
+
+.sell-content button:hover {
+    transform: translateY(-4px);
+
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+}
+
+.sell-steps {
+    display: grid;
+
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+
+    gap: 30px;
+
+    margin-top: 100px;
+}
+
+.sell-step {
+    padding-top: 25px;
+
+    border-top: 1px solid #444444;
+}
+
+.sell-step span {
+    font-size: 13px;
+
+    color: var(--accent);
+}
+
+.sell-step h3 {
+    margin-top: 20px;
+
+    font-size: 24px;
+}
+
+.sell-step p {
+    margin-top: 10px;
+
+    color: #999999;
+
+    font-size: 15px;
+}
+
+
+/* =========================================
+   START SELLING BUTTON
+   ========================================= */
+
+#start-selling-btn {
+    transition:
+        transform 0.25s ease,
+        box-shadow 0.25s ease;
+}
+
+#start-selling-btn:hover {
+    transform: translateY(-4px);
+
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+}
+
+
+/* =========================================
+   SUBMIT TECHNOLOGY
+   ========================================= */
+
+#submit-tech {
+    min-height: 100vh;
+
+    padding: 120px 8%;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+}
+
+.submit-content {
+    width: 100%;
+
+    max-width: 700px;
+}
+
+.submit-content h2 {
+    font-size: clamp(50px, 7vw, 90px);
+
+    line-height: 0.95;
+
+    margin: 20px 0;
+}
+
+.submit-content > p:not(.section-label) {
+    font-size: 18px;
+
+    line-height: 1.6;
+
+    margin-bottom: 40px;
+}
+
+#tech-form {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 15px;
+}
+
+#tech-form input,
+#tech-form textarea {
+    width: 100%;
+
+    padding: 16px 18px;
+
+    border: 1px solid #dddddd;
+
+    border-radius: 12px;
+
+    font-family: inherit;
+
+    font-size: 16px;
+
+    box-sizing: border-box;
+
+    outline: none;
+
+    transition:
+        border-color 0.25s ease,
+        box-shadow 0.25s ease;
+}
+
+#tech-form input:focus,
+#tech-form textarea:focus {
+    border-color: var(--accent);
+
+    box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.12);
+}
+
+#tech-form textarea {
+    resize: vertical;
+
+    min-height: 150px;
+}
+
+#tech-form button {
+    width: fit-content;
+
+    padding: 16px 28px;
+
+    border: none;
+
+    border-radius: 50px;
+
+    cursor: pointer;
+
+    font-size: 16px;
+
+    transition: transform 0.25s ease;
+}
+
+#tech-form button:hover {
+    transform: translateY(-4px);
+}
+
+#form-message {
+    margin-top: 20px;
+
+    font-weight: 600;
+}
+
+
+/* =========================================
+   ABOUT SECTION
+   ========================================= */
+
+#about {
+    padding: 140px 8%;
+}
+
+.about-heading {
+    max-width: 900px;
+
+    margin-bottom: 60px;
+}
+
+.about-heading h2 {
+    font-size: clamp(50px, 7vw, 90px);
+
+    line-height: 0.95;
+
+    margin-top: 20px;
+
+    letter-spacing: -3px;
+}
+
+.about-text {
+    max-width: 650px;
+
+    margin-left: auto;
+
+    margin-bottom: 100px;
+}
+
+.about-text p {
+    font-size: 20px;
+
+    line-height: 1.7;
+
+    margin-bottom: 25px;
+}
+
+.about-stats {
+    display: grid;
+
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+
+    gap: 25px;
+}
+
+.about-stat {
+    padding: 35px;
+
+    min-height: 220px;
+
+    border-top: 1px solid rgba(0, 0, 0, 0.15);
+
+    transition:
+        transform 0.3s ease,
+        border-color 0.3s ease;
+}
+
+.about-stat:hover {
+    transform: translateY(-6px);
+}
+
+.about-stat > span {
+    font-size: 13px;
+
+    font-weight: 700;
+
+    letter-spacing: 2px;
+}
+
+.about-stat h3 {
+    font-size: 30px;
+
+    margin: 25px 0 10px;
+}
+
+.about-stat p {
+    line-height: 1.5;
+}
+
+
+/* =========================================
+   CONTACT SECTION
+   ========================================= */
+
+#contact {
+    min-height: 80vh;
+
+    padding: 120px 8%;
+
+    display: flex;
+
+    align-items: center;
+}
+
+.contact-content {
+    max-width: 800px;
+}
+
+.contact-content h2 {
+    font-size: clamp(50px, 7vw, 90px);
+
+    line-height: 0.95;
+
+    margin: 20px 0;
+}
+
+.contact-content > p:not(.section-label) {
+    max-width: 550px;
+
+    font-size: 18px;
+
+    line-height: 1.6;
+
+    margin-bottom: 35px;
+}
+
+.contact-button {
+    display: inline-block;
+
+    padding: 16px 28px;
+
+    border-radius: 50px;
+
+    background: var(--dark);
+
+    color: white;
+
+    text-decoration: none;
+
+    transition:
+        transform 0.25s ease,
+        box-shadow 0.25s ease;
+}
+
+.contact-button:hover {
+    transform: translateY(-4px);
+
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+}
+
+
+/* =========================================
+   FOOTER
+   ========================================= */
+
+footer {
+    padding: 40px;
+
+    text-align: center;
+
+    border-top: 1px solid #dddddd;
+}
+
+
+/* =========================================
+   TABLET
+   ========================================= */
+
+@media (max-width: 900px) {
+
+    .discover-grid,
+    .product-grid,
+    .sell-steps,
+    .about-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .discover-card {
+        min-height: 250px;
+    }
+
+    .about-text {
+        margin-left: 0;
+    }
+
+}
+
+
+/* =========================================
+   MOBILE
+   ========================================= */
+
 @media (max-width: 768px) {
 
     /* Navbar */
 
+    header {
+        padding: 20px;
+    }
+
     nav {
         flex-direction: column;
+
         gap: 20px;
     }
 
     .nav-links {
         flex-wrap: wrap;
+
         justify-content: center;
+
         gap: 15px;
     }
 
@@ -543,12 +937,15 @@ header.scrolled {
 
     #home {
         min-height: 90vh;
+
         text-align: center;
+
         padding: 100px 20px 60px;
     }
 
     #home h1 {
         font-size: clamp(42px, 12vw, 70px);
+
         letter-spacing: -2px;
     }
 
@@ -556,18 +953,106 @@ header.scrolled {
         font-size: 16px;
     }
 
-
-    /* Hero buttons */
-
     .hero-buttons {
+        width: 100%;
+
+        max-width: 280px;
+
         display: flex;
+
         flex-direction: column;
+
         align-items: center;
+
         gap: 15px;
     }
 
-    .hero-buttons button {
-        width: min(280px, 90%);
+    .hero-buttons button,
+    #home button {
+        width: 100%;
+    }
+
+
+    /* Sections */
+
+    #discover,
+    #sell,
+    #about,
+    #contact {
+        padding: 100px 20px;
+    }
+
+
+    /* Discover */
+
+    .discover-grid {
+        grid-template-columns: 1fr;
+
+        gap: 20px;
+    }
+
+    .discover-card {
+        min-height: 220px;
+
+        padding: 28px;
+    }
+
+
+    /* Product */
+
+    .product-grid {
+        grid-template-columns: 1fr;
+    }
+
+
+    /* Sell */
+
+    .sell-steps {
+        grid-template-columns: 1fr;
+
+        gap: 40px;
+
+        margin-top: 70px;
+    }
+
+
+    /* About */
+
+    #about {
+        padding: 100px 20px;
+    }
+
+    .about-heading h2 {
+        letter-spacing: -2px;
+    }
+
+    .about-text {
+        margin-left: 0;
+
+        margin-bottom: 60px;
+    }
+
+    .about-text p {
+        font-size: 17px;
+    }
+
+    .about-stats {
+        grid-template-columns: 1fr;
+
+        gap: 30px;
+    }
+
+    .about-stat {
+        min-height: auto;
+
+        padding: 25px 0;
+    }
+
+
+    /* Contact */
+
+    #contact {
+        padding: 100px 20px;
     }
 
 
@@ -579,60 +1064,69 @@ header.scrolled {
 
     .story-content h2 {
         font-size: clamp(50px, 14vw, 80px);
+
         letter-spacing: -3px;
     }
 
     .delivery-scene {
         height: 400px;
+
         margin-top: 50px;
     }
 
     .delivery-man {
         left: 5%;
+
         font-size: 60px;
     }
 
     .delivery-box {
         left: calc(5% + 55px);
+
         font-size: 35px;
     }
 
     .rock {
         left: 60%;
+
         font-size: 45px;
     }
 
 
-    /* Tech reveal */
+    /* Technology reveal */
 
     .tech-reveal {
         left: 50%;
+
         transform: translateX(-50%);
+
         gap: 10px;
     }
 
     .tech-item {
-    width: 110px;
-    height: 110px;
+        width: 90px;
+        height: 90px;
 
-    display: flex;
-    align-items: center;
-    justify-content: center;
+        background: white;
 
-    background: white;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    border-radius: 20px;
+        border: 1px solid rgba(0, 0, 0, 0.08);
 
-    font-size: 18px;
-    font-weight: 700;
+        border-radius: 20px;
 
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
+        font-size: 16px;
 
-    opacity: 0;
-    transform: translateY(40px) scale(0.8);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
     }
-    .tech-item:hover {
-    transform: translateY(-8px) scale(1.03);
+
+
+    /* Submit */
+
+    #submit-tech {
+        padding: 100px 20px;
+    }
+
+    .submit-content h2 {
+        font-size: clamp(45px, 12vw, 70px);
     }
 
 }
