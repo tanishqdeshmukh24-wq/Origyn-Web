@@ -495,116 +495,328 @@
 </section>
 <section id="submit-tech">
 
-    <form id="tech-form">
+    <div class="submit-header">
 
-    <div class="form-group">
-        <label for="tech-name">Technology Name</label>
-        <input
-            type="text"
-            id="tech-name"
-            placeholder="e.g. NeuraVision AI"
-            required
-        >
+        <p class="section-label">
+            START SELLING
+        </p>
+
+        <h2>
+            Turn your technology
+            <br>
+            into something
+            <br>
+            people can discover.
+        </h2>
+
+        <p class="submit-intro">
+            Create a listing for your technology and put
+            your idea in front of people looking for
+            what you built.
+        </p>
+
     </div>
 
-    <div class="form-group">
-        <label for="tech-category">Category</label>
 
-        <select id="tech-category" required>
-            <option value="">Select category</option>
-            <option value="ai">AI / ML</option>
-            <option value="hardware">Hardware</option>
-            <option value="software">Software</option>
-            <option value="iot">IoT / Web</option>
-        </select>
-    </div>
+    <div class="listing-workspace">
 
-    <div class="form-group">
-        <label for="tech-description">Description</label>
-        <textarea
-            id="tech-description"
-            placeholder="Describe your technology..."
-            required
-        ></textarea>
-    </div>
+        <!-- =========================
+             CREATE LISTING
+        ========================== -->
 
-    <div class="form-group">
-        <label for="tech-price">Price</label>
+        <div class="listing-form-panel">
 
-        <input
-            type="number"
-            id="tech-price"
-            placeholder="₹"
-            min="0"
-            required
-        >
-    </div>
+            <div class="panel-top">
 
-    <div class="form-group">
-        <label for="tech-creator">Creator</label>
+                <div>
+                    <span class="panel-number">
+                        01
+                    </span>
 
-        <input
-            type="text"
-            id="tech-creator"
-            placeholder="Your name / company"
-            required
-        >
-    </div>
+                    <h3>
+                        Create your listing
+                    </h3>
+                </div>
 
-    <button type="submit" id="preview-listing-btn">
-        Preview Listing →
-    </button>
-
-    <p id="form-message"></p>
-
-</form>
-<div id="listing-preview">
-
-    <p class="section-label">
-        LISTING PREVIEW
-    </p>
-
-    <div class="preview-card">
-
-        <div class="preview-image" id="preview-image">
-            TECH
-        </div>
-
-        <div class="preview-content">
-
-            <p id="preview-category">
-                CATEGORY
-            </p>
-
-            <h3 id="preview-name">
-                Your Technology
-            </h3>
-
-            <p id="preview-description">
-                Your technology description will appear here.
-            </p>
-
-            <div class="preview-bottom">
-
-                <strong id="preview-price">
-                    ₹0
-                </strong>
-
-                <span id="preview-creator">
-                    Creator
+                <span class="panel-status">
+                    DRAFT
                 </span>
 
+            </div>
+
+
+            <form id="tech-form">
+
+                <div class="form-group">
+
+                    <label for="tech-name">
+                        Technology Name
+                    </label>
+
+                    <input
+                        type="text"
+                        id="tech-name"
+                        placeholder="e.g. NeuraVision AI"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="tech-category">
+                        Category
+                    </label>
+
+                    <select
+                        id="tech-category"
+                        required
+                    >
+
+                        <option value="">
+                            Select category
+                        </option>
+
+                        <option value="ai">
+                            AI / ML
+                        </option>
+
+                        <option value="hardware">
+                            Hardware
+                        </option>
+
+                        <option value="software">
+                            Software
+                        </option>
+
+                        <option value="iot">
+                            IoT / Web
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="tech-description">
+                        Description
+                    </label>
+
+                    <textarea
+                        id="tech-description"
+                        placeholder="What does your technology do?"
+                        required
+                    ></textarea>
+
+                </div>
+
+
+                <div class="form-row">
+
+                    <div class="form-group">
+
+                        <label for="tech-price">
+                            Price
+                        </label>
+
+                        <div class="input-prefix">
+                            <span>₹</span>
+
+                            <input
+                                type="number"
+                                id="tech-price"
+                                placeholder="2,499"
+                                min="0"
+                                required
+                            >
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label for="tech-creator">
+                            Creator
+                        </label>
+
+                        <input
+                            type="text"
+                            id="tech-creator"
+                            placeholder="Name / company"
+                            required
+                        >
+
+                    </div>
+
+                </div>
+
+
+                <button
+                    type="submit"
+                    id="preview-listing-btn"
+                    class="listing-action primary"
+                >
+                    Preview Listing
+                    <span>→</span>
+                </button>
+
+
+                <p id="form-message"></p>
+
+            </form>
+
+        </div>
+
+
+        <!-- =========================
+             LIVE PREVIEW
+        ========================== -->
+
+        <div
+            id="listing-preview"
+            class="listing-preview-panel"
+        >
+
+            <div class="panel-top">
+
+                <div>
+
+                    <span class="panel-number">
+                        02
+                    </span>
+
+                    <h3>
+                        Live preview
+                    </h3>
+
+                </div>
+
+                <span class="panel-status live">
+                    LIVE
+                </span>
+
+            </div>
+
+
+            <div class="preview-card">
+
+                <div
+                    class="preview-image"
+                    id="preview-image"
+                >
+                    TECH
+                </div>
+
+
+                <div class="preview-content">
+
+                    <p id="preview-category">
+                        CATEGORY
+                    </p>
+
+
+                    <h3 id="preview-name">
+                        Your Technology
+                    </h3>
+
+
+                    <p id="preview-description">
+                        Your technology description
+                        will appear here.
+                    </p>
+
+
+                    <div class="preview-bottom">
+
+                        <strong id="preview-price">
+                            ₹0
+                        </strong>
+
+
+                        <span>
+                            by
+                            <strong id="preview-creator">
+                                Creator
+                            </strong>
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <button
+                type="button"
+                id="publish-listing-btn"
+                class="listing-action publish"
+            >
+                Publish to Marketplace
+                <span>→</span>
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================
+         HOW IT WORKS
+    ========================== -->
+
+    <div class="listing-process">
+
+        <div class="process-line"></div>
+
+
+        <div class="process-step">
+
+            <span>01</span>
+
+            <div>
+                <h4>Create</h4>
+                <p>
+                    Tell people what you built.
+                </p>
+            </div>
+
+        </div>
+
+
+        <div class="process-step">
+
+            <span>02</span>
+
+            <div>
+                <h4>Preview</h4>
+                <p>
+                    See how your listing looks.
+                </p>
+            </div>
+
+        </div>
+
+
+        <div class="process-step">
+
+            <span>03</span>
+
+            <div>
+                <h4>Publish</h4>
+                <p>
+                    Put your technology on Origyn.
+                </p>
             </div>
 
         </div>
 
     </div>
-
-    <button id="publish-listing-btn">
-        Publish to Marketplace →
-    </button>
-
-</div>
 
 </section>
 
