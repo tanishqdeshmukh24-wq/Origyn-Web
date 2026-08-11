@@ -43,7 +43,157 @@
         </button>
 
     </div>
+    <!-- CHECKOUT -->
+<div id="checkout-screen">
 
+    <div class="checkout-container">
+
+        <button
+            type="button"
+            id="back-to-cart"
+        >
+            ← Back to Cart
+        </button>
+
+        <p class="section-label">
+            CHECKOUT
+        </p>
+
+        <h2>
+            Complete your order
+        </h2>
+
+        <p class="checkout-subtitle">
+            Review your information before placing your order.
+        </p>
+
+
+        <div class="checkout-layout">
+
+            <!-- CUSTOMER DETAILS -->
+
+            <div class="checkout-form">
+
+                <div class="form-group">
+
+                    <label for="checkout-name">
+                        Full Name
+                    </label>
+
+                    <input
+                        type="text"
+                        id="checkout-name"
+                        placeholder="Your full name"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="checkout-email">
+                        Email
+                    </label>
+
+                    <input
+                        type="email"
+                        id="checkout-email"
+                        placeholder="you@example.com"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="checkout-address">
+                        Delivery Address
+                    </label>
+
+                    <textarea
+                        id="checkout-address"
+                        placeholder="Enter your address"
+                        required
+                    ></textarea>
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="checkout-city">
+                        City
+                    </label>
+
+                    <input
+                        type="text"
+                        id="checkout-city"
+                        placeholder="Your city"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="checkout-pincode">
+                        PIN Code
+                    </label>
+
+                    <input
+                        type="text"
+                        id="checkout-pincode"
+                        placeholder="e.g. 431001"
+                        maxlength="6"
+                        required
+                    >
+
+                </div>
+
+            </div>
+
+
+            <!-- ORDER SUMMARY -->
+
+            <div class="checkout-summary">
+
+                <h3>
+                    Order Summary
+                </h3>
+
+                <div id="checkout-items">
+                    <!-- Items inserted by JavaScript -->
+                </div>
+
+                <div class="checkout-summary-total">
+
+                    <span>
+                        Total
+                    </span>
+
+                    <strong id="checkout-total">
+                        ₹0
+                    </strong>
+
+                </div>
+
+                <button
+                    type="button"
+                    id="place-order-btn"
+                >
+                    Place Order →
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
 </div>
 
     <!-- Navigation -->
