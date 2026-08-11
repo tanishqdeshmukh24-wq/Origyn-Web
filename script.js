@@ -1504,16 +1504,24 @@ document.addEventListener("DOMContentLoaded", () => {
                 </p>
 
                 <div class="product-bottom">
+    <strong>
+        ${product.price || "₹0"}
+    </strong>
 
-                    <strong>
-                        ${product.price || "₹0"}
-                    </strong>
+    <div class="product-actions">
+        <a href="#">
+            View Product →
+        </a>
 
-                    <a href="#">
-                        View Product →
-                    </a>
-
-                </div>
+        <button
+            type="button"
+            class="add-to-cart-btn"
+            data-product="${productName}"
+        >
+            Add to Cart
+        </button>
+    </div>
+</div>
 
             </div>
 
@@ -1718,7 +1726,391 @@ document.addEventListener("DOMContentLoaded", () => {
 
     }
 
+// ========================================================
+// CART SYSTEM
+// ========================================================
 
+const CART_STORAGE_KEY = "origynCart";
+
+function getCart() {
+    try {
+        return JSON.parse(
+            localStorage.getItem(CART_STORAGE_KEY)
+        ) || [];
+    } catch (error) {
+        return [];
+    }
+}
+
+function saveCart(cart) {
+    localStorage.setItem(
+        CART_STORAGE_KEY,
+        JSON.stringify(cart)
+    );
+}
+
+function addToCart(productName) {
+
+    const product = productData[productName];
+
+    if (!product) {
+        console.error("Product not found:", productName);
+        return;
+    }
+
+    const cart = getCart();
+
+    const existingItem = cart.find(
+        item => item.name === productName
+    );
+
+    if (existingItem) {
+        existingItem.quantity += 1;
+    } else {
+        cart.push({
+            name: productName,
+            category: product.category || "TECHNOLOGY",
+            description: product.description || "",
+            creator: product.creator || "Creator",
+            price: product.price || "₹0",
+            image: product.image || "TECH",
+            quantity: 1
+        });
+    }
+
+    saveCart(cart);
+    updateCartCount();
+
+    console.log("Added to cart:", productName);
+}
+
+function updateCartCount() {
+
+    const cart = getCart();
+
+    const count = cart.reduce(
+        (total, item) =>
+            total + Number(item.quantity || 0),
+        0
+    );
+
+    let cartCounter =
+        document.querySelector("#cart-count");
+
+    if (!cartCounter) {
+
+        cartCounter = document.createElement("span");
+
+        cartCounter.id = "cart-count";
+
+        cartCounter.style.cssText = `
+            position: fixed;
+            right: 25px;
+            bottom: 25px;
+            z-index: 9999;
+            background: #111;
+            color: white;
+            padding: 10px 14px;
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 600;
+            pointer-events: none;
+        `;
+
+        document.body.appendChild(cartCounter);
+    }
+
+    cartCounter.textContent =
+        `Cart ${count}`;
+
+    cartCounter.style.display =
+        count > 0 ? "block" : "none";
+}
+
+
+// Handle Add to Cart buttons
+document.addEventListener(
+    "click",
+    (event) => {
+
+        const button =
+            event.target.closest(
+                ".add-to-cart-btn"
+            );
+
+        if (!button) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        const productName =
+            button.dataset.product;
+
+        if (!productName) return;
+
+        addToCart(productName);
+
+        const originalText =
+            button.textContent;
+
+        button.textContent =
+            "Added ✓";
+
+        button.disabled = true;
+
+        setTimeout(() => {
+
+            button.textContent =
+                originalText;
+
+            button.disabled = false;
+
+        }, 1000);
+    }
+);
+
+
+// Restore cart count after refresh
+updateCartCount();
+// ========================================================
+// CART DRAWER
+// ========================================================
+
+const cartButton = document.querySelector("#cart-button");
+const cartDrawer = document.querySelector("#cart-drawer");
+const closeCartButton = document.querySelector("#close-cart");
+const cartItemsContainer = document.querySelector("#cart-items");
+const cartTotalElement = document.querySelector("#cart-total");
+const cartButtonCount = document.querySelector("#cart-button-count");
+
+
+function getPriceNumber(price) {
+    return Number(
+        String(price)
+            .replace(/[₹,\s]/g, "")
+    ) || 0;
+}
+
+
+function renderCart() {
+
+    const cart = getCart();
+
+    if (!cartItemsContainer) return;
+
+    if (!cart.length) {
+
+        cartItemsContainer.innerHTML = `
+            <div class="cart-empty">
+                <p>Your cart is empty.</p>
+                <span>Add some technology from the marketplace.</span>
+            </div>
+        `;
+
+        if (cartTotalElement) {
+            cartTotalElement.textContent = "₹0";
+        }
+
+        if (cartButtonCount) {
+            cartButtonCount.textContent = "0";
+        }
+
+        return;
+    }
+
+
+    let total = 0;
+    let itemCount = 0;
+
+
+    cartItemsContainer.innerHTML = cart.map(
+        (item, index) => {
+
+            const price =
+                getPriceNumber(item.price);
+
+            const quantity =
+                Number(item.quantity) || 1;
+
+            total += price * quantity;
+            itemCount += quantity;
+
+
+            return `
+                <div class="cart-item">
+
+                    <div class="cart-item-info">
+
+                        <h3>
+                            ${item.name}
+                        </h3>
+
+                        <p>
+                            ${item.creator || "Creator"}
+                        </p>
+
+                        <div class="cart-item-controls">
+
+                            <button
+                                type="button"
+                                data-cart-action="decrease"
+                                data-cart-index="${index}"
+                            >
+                                −
+                            </button>
+
+                            <strong>
+                                ${quantity}
+                            </strong>
+
+                            <button
+                                type="button"
+                                data-cart-action="increase"
+                                data-cart-index="${index}"
+                            >
+                                +
+                            </button>
+
+                            <button
+                                type="button"
+                                data-cart-action="remove"
+                                data-cart-index="${index}"
+                            >
+                                Remove
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                    <div class="cart-item-price">
+                        ₹${(price * quantity).toLocaleString("en-IN")}
+                    </div>
+
+                </div>
+            `;
+        }
+    ).join("");
+
+
+    if (cartTotalElement) {
+        cartTotalElement.textContent =
+            `₹${total.toLocaleString("en-IN")}`;
+    }
+
+    if (cartButtonCount) {
+        cartButtonCount.textContent =
+            itemCount;
+    }
+}
+
+
+// OPEN CART
+
+if (cartButton) {
+
+    cartButton.addEventListener(
+        "click",
+        () => {
+
+            renderCart();
+
+            cartDrawer?.classList.add("active");
+
+        }
+    );
+
+}
+
+
+// CLOSE CART
+
+if (closeCartButton) {
+
+    closeCartButton.addEventListener(
+        "click",
+        () => {
+
+            cartDrawer?.classList.remove("active");
+
+        }
+    );
+
+}
+
+
+// CART CONTROLS
+
+if (cartItemsContainer) {
+
+    cartItemsContainer.addEventListener(
+        "click",
+        (event) => {
+
+            const button =
+                event.target.closest(
+                    "[data-cart-action]"
+                );
+
+            if (!button) return;
+
+
+            const index =
+                Number(
+                    button.dataset.cartIndex
+                );
+
+            const action =
+                button.dataset.cartAction;
+
+
+            const cart = getCart();
+
+            if (!cart[index]) return;
+
+
+            if (action === "increase") {
+
+                cart[index].quantity += 1;
+
+            }
+
+
+            if (action === "decrease") {
+
+                cart[index].quantity -= 1;
+
+                if (cart[index].quantity <= 0) {
+
+                    cart.splice(index, 1);
+
+                }
+
+            }
+
+
+            if (action === "remove") {
+
+                cart.splice(index, 1);
+
+            }
+
+
+            saveCart(cart);
+
+            updateCartCount();
+
+            renderCart();
+
+        }
+    );
+
+}
+
+
+// Initial render
+
+renderCart();
     // ========================================================
     // VIEW PRODUCT
     // ========================================================
