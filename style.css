@@ -2160,3 +2160,143 @@ footer {
     }
 
 }
+/* =========================================================
+   CART + FAVORITES NAVIGATION
+   ========================================================= */
+
+#favorites-nav,
+#cart-nav {
+    position: relative;
+
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    width: 42px;
+
+    height: 42px;
+
+    padding: 0;
+
+    border: 1px solid rgba(0, 0, 0, 0.12);
+
+    border-radius: 50%;
+
+    background: transparent;
+
+    font-family: inherit;
+
+    font-size: 17px;
+
+    cursor: pointer;
+
+    transition:
+        transform 0.25s ease,
+        background 0.25s ease;
+}
+
+
+#favorites-nav:hover,
+#cart-nav:hover {
+    transform: translateY(-2px);
+
+    background: #f2f2f2;
+}
+
+
+#favorites-count,
+#cart-count {
+    position: absolute;
+
+    top: -5px;
+
+    right: -4px;
+
+    min-width: 17px;
+
+    height: 17px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    padding: 0 4px;
+
+    box-sizing: border-box;
+
+    border-radius: 50px;
+
+    background: #111;
+
+    color: white;
+
+    font-size: 9px;
+
+    font-weight: 700;
+}
+/* =========================================================
+   PRODUCT FAVORITE BUTTON
+   ========================================================= */
+
+.favorite-product-btn {
+
+    position: absolute;
+
+    top: 14px;
+
+    right: 14px;
+
+    z-index: 5;
+
+    width: 40px;
+
+    height: 40px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    padding: 0;
+
+    border: 1px solid rgba(0, 0, 0, 0.08);
+
+    border-radius: 50%;
+
+    background: rgba(255, 255, 255, 0.92);
+
+    backdrop-filter: blur(8px);
+
+    font-size: 19px;
+
+    line-height: 1;
+
+    cursor: pointer;
+
+    transition:
+        transform 0.25s ease,
+        background 0.25s ease;
+}
+
+
+.favorite-product-btn:hover {
+
+    transform: scale(1.08);
+
+    background: white;
+
+}
+
+
+.favorite-product-btn.active {
+
+    background: #111;
+
+    color: white;
+
+}

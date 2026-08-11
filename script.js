@@ -1476,10 +1476,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
         card.innerHTML = `
+    <div class="product-image">
+        ${product.image || "TECH"}
 
-            <div class="product-image">
-                ${product.image || "TECH"}
-            </div>
+        <button
+            type="button"
+            class="favorite-product-btn"
+            data-product="${productName}"
+            aria-label="Add ${productName} to favorites"
+        >
+            ${isOrigynFavorite(productName) ? "♥" : "♡"}
+        </button>
+    </div>
 
             <div class="product-content">
 
@@ -2805,3 +2813,224 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
 });
+/* =========================================================
+   ORIGYN — FAVORITES SYSTEM
+   ========================================================= */
+
+const ORIGYN_FAVORITES_KEY = "origynFavorites";
+
+let origynFavorites =
+    JSON.parse(localStorage.getItem(ORIGYN_FAVORITES_KEY)) || [];
+
+
+/* ---------------------------------------------------------
+   SAVE FAVORITES
+--------------------------------------------------------- */
+
+function saveOrigynFavorites() {
+
+    localStorage.setItem(
+        ORIGYN_FAVORITES_KEY,
+        JSON.stringify(origynFavorites)
+    );
+
+}
+
+
+/* ---------------------------------------------------------
+   UPDATE FAVORITES COUNT
+--------------------------------------------------------- */
+
+function updateFavoritesCount() {
+
+    const favoritesCount =
+        document.querySelector("#favorites-count");
+
+    if (!favoritesCount) return;
+
+    favoritesCount.textContent =
+        origynFavorites.length;
+
+}
+
+
+/* ---------------------------------------------------------
+   CHECK IF PRODUCT IS FAVORITED
+--------------------------------------------------------- */
+
+function isOrigynFavorite(productName) {
+
+    return origynFavorites.includes(productName);
+
+}
+
+
+/* ---------------------------------------------------------
+   TOGGLE FAVORITE
+--------------------------------------------------------- */
+
+function toggleOrigynFavorite(productName, button) {
+
+    if (isOrigynFavorite(productName)) {
+
+        origynFavorites =
+            origynFavorites.filter(
+                name => name !== productName
+            );
+
+        button.classList.remove("active");
+
+        button.textContent = "♡";
+
+    } else {
+
+        origynFavorites.push(productName);
+
+        button.classList.add("active");
+
+        button.textContent = "♥";
+
+    }
+
+
+    saveOrigynFavorites();
+
+    updateFavoritesCount();
+
+}
+
+
+/* ---------------------------------------------------------
+   FAVORITE BUTTON EVENTS
+--------------------------------------------------------- */
+
+document.addEventListener("click", (event) => {
+
+    const favoriteButton =
+        event.target.closest(".favorite-product-btn");
+
+    if (!favoriteButton) return;
+
+
+    event.preventDefault();
+
+    event.stopPropagation();
+
+
+    const productName =
+        favoriteButton.dataset.product;
+
+
+    if (!productName) return;
+
+
+    toggleOrigynFavorite(
+        productName,
+        favoriteButton
+    );
+
+});
+
+
+/* ---------------------------------------------------------
+   INITIAL COUNT
+--------------------------------------------------------- */
+
+updateFavoritesCount();
+/* =========================================================
+   ORIGYN — CART SYSTEM
+   ========================================================= */
+
+const ORIGYN_CART_KEY = "origynCart";
+
+let origynCart =
+    JSON.parse(localStorage.getItem(ORIGYN_CART_KEY)) || [];
+
+
+/* ---------------------------------------------------------
+   SAVE CART
+--------------------------------------------------------- */
+
+function saveOrigynCart() {
+
+    localStorage.setItem(
+        ORIGYN_CART_KEY,
+        JSON.stringify(origynCart)
+    );
+
+}
+
+
+/* ---------------------------------------------------------
+   UPDATE CART COUNT
+--------------------------------------------------------- */
+
+function updateCartCount() {
+
+    const cartCount =
+        document.querySelector("#cart-count");
+
+    if (!cartCount) return;
+
+    cartCount.textContent =
+        origynCart.length;
+
+}
+
+
+/* ---------------------------------------------------------
+   CHECK IF PRODUCT IS IN CART
+--------------------------------------------------------- */
+
+function isOrigynInCart(productName) {
+
+    return origynCart.some(
+        item => item.name === productName
+    );
+
+}
+
+
+/* ---------------------------------------------------------
+   ADD PRODUCT TO CART
+--------------------------------------------------------- */
+
+function addOrigynToCart(productName, product) {
+
+    if (!product) return;
+
+    if (isOrigynInCart(productName)) {
+
+        return;
+
+    }
+
+    origynCart.push({
+
+        name: productName,
+
+        category: product.category || "TECHNOLOGY",
+
+        description: product.description || "",
+
+        creator: product.creator || "Creator",
+
+        price: product.price || "₹0",
+
+        image: product.image || "TECH"
+
+    });
+
+
+    saveOrigynCart();
+
+    updateCartCount();
+
+}
+
+
+/* ---------------------------------------------------------
+   INITIAL CART COUNT
+--------------------------------------------------------- */
+
+updateCartCount();
