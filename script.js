@@ -15,6 +15,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const cartCount = $("#cart-count");
     const cartButtonCount = $("#cart-button-count");
     const checkoutBtn = $("#checkout-btn");
+    if (checkoutBtn) checkoutBtn.textContent = "Proceed to Pay →";
     const checkoutScreen = $("#checkout-screen");
     const backToCart = $("#back-to-cart");
     const checkoutItems = $("#checkout-items");
@@ -291,14 +292,8 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!favorite && !add && !view) return;
         event.preventDefault();
         event.stopPropagation();
-        if (favorite) {
-            toggleFavorite(products.find(item => item.name === favorite.dataset.product));
-            return;
-        }
-        if (add) {
-            addToCart(products[Number(add.dataset.addProduct)]);
-            return;
-        }
+        if (favorite) { toggleFavorite(products.find(item => item.name === favorite.dataset.product)); return; }
+        if (add) { addToCart(products[Number(add.dataset.addProduct)]); return; }
         openProduct(products[Number(view.dataset.viewProduct)]);
     });
 
@@ -395,9 +390,6 @@ document.addEventListener("DOMContentLoaded", () => {
         updateHeader();
     }
 
-    /* =========================================================
-       ORIGINAL GSAP STORY / PAGE ANIMATIONS
-    ========================================================= */
     if(typeof gsap!=="undefined") {
         if(typeof ScrollTrigger!=="undefined") gsap.registerPlugin(ScrollTrigger);
         const intro=gsap.timeline();
@@ -415,9 +407,7 @@ document.addEventListener("DOMContentLoaded", () => {
             gsap.from(".sell-step",{opacity:0,y:30,duration:0.6,stagger:0.15,scrollTrigger:{trigger:".sell-steps",start:"top 80%",toggleActions:"play none none reverse"}});
             gsap.from(".contact-content",{y:80,opacity:0,duration:1,ease:"power3.out",scrollTrigger:{trigger:"#contact",start:"top 75%",toggleActions:"play none none reverse"}});
             const aboutTimeline=gsap.timeline({scrollTrigger:{trigger:"#about",start:"top 70%",toggleActions:"play none none reverse"}});
-            aboutTimeline.from(".about-heading",{x:-70,opacity:0,duration:0.8,ease:"power3.out"})
-                .from(".about-text",{y:50,opacity:0,duration:0.7,ease:"power3.out"},"-=0.4")
-                .from(".about-stat",{y:50,opacity:0,duration:0.6,stagger:0.2,ease:"power3.out"},"-=0.3");
+            aboutTimeline.from(".about-heading",{x:-70,opacity:0,duration:0.8,ease:"power3.out"}).from(".about-text",{y:50,opacity:0,duration:0.7,ease:"power3.out"},"-=0.4").from(".about-stat",{y:50,opacity:0,duration:0.6,stagger:0.2,ease:"power3.out"},"-=0.3");
 
             gsap.to(".delivery-box",{x:500,scrollTrigger:{trigger:"#story",start:"top top",end:"+=2000",scrub:1}});
             const walking=gsap.timeline({repeat:-1,paused:true});
