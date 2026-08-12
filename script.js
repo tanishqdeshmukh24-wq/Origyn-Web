@@ -1,1404 +1,417 @@
 /* =========================================================
-   ORIGYN — COMPLETE SCRIPT
-   Works with the HTML structure provided
+   ORIGYN — STABLE MARKETPLACE + ORIGINAL STORY ANIMATIONS
 ========================================================= */
 
 document.addEventListener("DOMContentLoaded", () => {
+    const $ = (s, root = document) => root.querySelector(s);
+    const $$ = (s, root = document) => [...root.querySelectorAll(s)];
 
-    /* =====================================================
-       ELEMENT REFERENCES
-    ===================================================== */
-
-    const cartButton = document.getElementById("cart-button");
-    const cartNav = document.getElementById("cart-nav");
-    const closeCart = document.getElementById("close-cart");
-    const cartDrawer = document.getElementById("cart-drawer");
-
-    const cartItemsContainer = document.getElementById("cart-items");
-    const cartTotal = document.getElementById("cart-total");
-    const cartCount = document.getElementById("cart-count");
-    const cartButtonCount = document.getElementById("cart-button-count");
-
-    const checkoutBtn = document.getElementById("checkout-btn");
-    const checkoutScreen = document.getElementById("checkout-screen");
-    const backToCart = document.getElementById("back-to-cart");
-
-    const checkoutItems = document.getElementById("checkout-items");
-    const checkoutTotal = document.getElementById("checkout-total");
-
-    const placeOrderBtn = document.getElementById("place-order-btn");
-
-    const favoritesNav = document.getElementById("favorites-nav");
-    const favoritesCount = document.getElementById("favorites-count");
-
-    const exploreBtn = document.getElementById("explore-btn");
-    const sellBtn = document.getElementById("sell-btn");
-    const startSellingBtn = document.getElementById("start-selling-btn");
-
-    const backToMarketplace =
-        document.getElementById("back-to-marketplace");
-
-    const getProductBtn =
-        document.getElementById("get-product-btn");
-
-    const productDetails =
-        document.getElementById("product-details");
-
-    const marketplace =
-        document.getElementById("discover");
-
-    const productSearch =
-        document.getElementById("product-search");
-
-    const filterButtons =
-        document.querySelectorAll(".filter-btn");
-
-    const productCards =
-        document.querySelectorAll(".product-card");
-
-    const techForm =
-        document.getElementById("tech-form");
-
-    const publishListingBtn =
-        document.getElementById("publish-listing-btn");
-
-
-    /* =====================================================
-       DATA
-    ===================================================== */
+    const cartButton = $("#cart-button");
+    const cartNav = $("#cart-nav");
+    const closeCart = $("#close-cart");
+    const cartDrawer = $("#cart-drawer");
+    const cartItems = $("#cart-items");
+    const cartTotal = $("#cart-total");
+    const cartCount = $("#cart-count");
+    const cartButtonCount = $("#cart-button-count");
+    const checkoutBtn = $("#checkout-btn");
+    const checkoutScreen = $("#checkout-screen");
+    const backToCart = $("#back-to-cart");
+    const checkoutItems = $("#checkout-items");
+    const checkoutTotal = $("#checkout-total");
+    const placeOrderBtn = $("#place-order-btn");
+    const favoritesNav = $("#favorites-nav");
+    const favoritesCount = $("#favorites-count");
+    const productSearch = $("#product-search");
+    const filterButtons = $$(".filter-btn");
+    const productGrid = $(".product-grid");
+    const productDetails = $("#product-details");
+    const backToMarketplace = $("#back-to-marketplace");
+    const getProductBtn = $("#get-product-btn");
+    const techForm = $("#tech-form");
+    const listingPreview = $("#listing-preview");
+    const publishListingBtn = $("#publish-listing-btn");
 
     let cart = [];
-
     let favorites = [];
-
     let selectedProduct = null;
-
     let currentCategory = "all";
 
-
-    /* =====================================================
-       PRODUCT DATA
-    ===================================================== */
-
     const products = [
-        {
-            name: "NeuraVision AI",
-            category: "ai",
-            categoryName: "Artificial Intelligence",
-            description:
-                "An intelligent AI platform designed to automate everyday workflows.",
-            price: 2499,
-            creator: "Origyn Labs",
-            image: "AI"
-        },
-
-        {
-            name: "RoboArm X1",
-            category: "hardware",
-            categoryName: "Hardware",
-            description:
-                "A modular robotic arm built for automation and experimentation.",
-            price: 18999,
-            creator: "Origyn Labs",
-            image: "HW"
-        },
-
-        {
-            name: "DevFlow",
-            category: "software",
-            categoryName: "Software",
-            description:
-                "A developer productivity tool designed to simplify modern workflows.",
-            price: 999,
-            creator: "Origyn Labs",
-            image: "SW"
-        },
-
-        {
-            name: "HomeSense",
-            category: "iot",
-            categoryName: "IoT",
-            description:
-                "Smart sensors that bring intelligent automation to your home.",
-            price: 3499,
-            creator: "Origyn Labs",
-            image: "IOT"
-        },
-
-        {
-            name: "VisionCore",
-            category: "ai",
-            categoryName: "Machine Learning",
-            description:
-                "A computer vision toolkit for developers and researchers.",
-            price: 4999,
-            creator: "Origyn Labs",
-            image: "ML"
-        },
-
-        {
-            name: "CloudForge",
-            category: "iot",
-            categoryName: "Web Technology",
-            description:
-                "Tools for building and deploying modern web applications faster.",
-            price: 1499,
-            creator: "Origyn Labs",
-            image: "WEB"
-        }
+        {name:"NeuraVision AI",category:"ai",categoryName:"Artificial Intelligence",description:"An intelligent AI platform designed to automate everyday workflows.",price:2499,creator:"Origyn Labs",image:"AI"},
+        {name:"RoboArm X1",category:"hardware",categoryName:"Hardware",description:"A modular robotic arm built for automation and experimentation.",price:18999,creator:"Origyn Labs",image:"HW"},
+        {name:"DevFlow",category:"software",categoryName:"Software",description:"A developer productivity tool designed to simplify modern workflows.",price:999,creator:"Origyn Labs",image:"SW"},
+        {name:"HomeSense",category:"iot",categoryName:"IoT",description:"Smart sensors that bring intelligent automation to your home.",price:3499,creator:"Origyn Labs",image:"IOT"},
+        {name:"VisionCore",category:"ai",categoryName:"Machine Learning",description:"A computer vision toolkit for developers and researchers.",price:4999,creator:"Origyn Labs",image:"ML"},
+        {name:"CloudForge",category:"iot",categoryName:"Web Technology",description:"Tools for building and deploying modern web applications faster.",price:1499,creator:"Origyn Labs",image:"WEB"}
     ];
 
+    const categoryNames = {ai:"Artificial Intelligence",hardware:"Hardware",software:"Software",iot:"IoT / Web"};
+    const imageLabels = {ai:"AI",hardware:"HW",software:"SW",iot:"IOT"};
 
-    /* =====================================================
-       HELPERS
-    ===================================================== */
-
-    function formatPrice(price) {
-        return `₹${Number(price).toLocaleString("en-IN")}`;
-    }
-
+    function money(value) { return `₹${Number(value || 0).toLocaleString("en-IN")}`; }
 
     function scrollToSection(id) {
-
-        const section = document.getElementById(id);
-
-        if (!section) return;
-
-        section.scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-        });
+        const el = document.getElementById(id);
+        if (el) el.scrollIntoView({behavior:"smooth", block:"start"});
     }
 
+    /* =====================================================
+       NAVIGATION
+    ===================================================== */
+    $$(".nav-links a").forEach(link => {
+        link.addEventListener("click", e => {
+            const href = link.getAttribute("href");
+            if (href && href.startsWith("#")) {
+                e.preventDefault();
+                scrollToSection(href.slice(1));
+            }
+        });
+    });
+
+    $("#explore-btn")?.addEventListener("click", () => scrollToSection("discover"));
+    $("#sell-btn")?.addEventListener("click", () => scrollToSection("sell"));
+    $("#start-selling-btn")?.addEventListener("click", () => scrollToSection("submit-tech"));
 
     /* =====================================================
        CART
     ===================================================== */
-
-    function updateCart() {
-
-        if (!cartItemsContainer) return;
-
-        cartItemsContainer.innerHTML = "";
-
+    function renderCheckout() {
+        if (!checkoutItems || !checkoutTotal) return;
+        checkoutItems.innerHTML = "";
         let total = 0;
-        let quantity = 0;
-
-        if (cart.length === 0) {
-
-            cartItemsContainer.innerHTML = `
-                <div class="empty-cart">
-                    <p>Your cart is empty.</p>
-                    <span>Discover some technology to get started.</span>
-                </div>
-            `;
-
+        if (!cart.length) {
+            checkoutItems.innerHTML = `<p class="empty-checkout">Your cart is empty.</p>`;
         } else {
-
-            cart.forEach((item, index) => {
-
+            cart.forEach(item => {
                 total += item.price * item.quantity;
-                quantity += item.quantity;
-
-                const cartItem = document.createElement("div");
-
-                cartItem.className = "cart-item";
-
-                cartItem.innerHTML = `
-                    <div class="cart-item-image">
-                        ${item.image}
-                    </div>
-
-                    <div class="cart-item-info">
-
-                        <h3>${item.name}</h3>
-
-                        <p>${formatPrice(item.price)}</p>
-
-                        <div class="cart-quantity">
-
-                            <button
-                                type="button"
-                                class="quantity-btn"
-                                data-index="${index}"
-                                data-action="decrease"
-                            >
-                                −
-                            </button>
-
-                            <span>
-                                ${item.quantity}
-                            </span>
-
-                            <button
-                                type="button"
-                                class="quantity-btn"
-                                data-index="${index}"
-                                data-action="increase"
-                            >
-                                +
-                            </button>
-
-                        </div>
-
-                    </div>
-
-                    <button
-                        type="button"
-                        class="remove-cart-item"
-                        data-index="${index}"
-                    >
-                        ×
-                    </button>
-                `;
-
-                cartItemsContainer.appendChild(cartItem);
+                const row = document.createElement("div");
+                row.className = "checkout-item";
+                row.innerHTML = `<div><strong>${item.name}</strong><div class="checkout-item-quantity">× ${item.quantity}</div></div><strong class="checkout-item-price">${money(item.price * item.quantity)}</strong>`;
+                checkoutItems.appendChild(row);
             });
         }
-
-        if (cartTotal) {
-            cartTotal.textContent = formatPrice(total);
-        }
-
-        if (cartCount) {
-            cartCount.textContent = quantity;
-        }
-
-        if (cartButtonCount) {
-            cartButtonCount.textContent = quantity;
-        }
-
-        updateCheckout();
+        checkoutTotal.textContent = money(total);
     }
 
-
-    function addToCart(product) {
-
-        if (!product) return;
-
-        const existingItem = cart.find(
-            item => item.name === product.name
-        );
-
-        if (existingItem) {
-
-            existingItem.quantity += 1;
-
+    function renderCart() {
+        if (!cartItems) return;
+        cartItems.innerHTML = "";
+        let total = 0, quantity = 0;
+        if (!cart.length) {
+            cartItems.innerHTML = `<div class="cart-empty"><p>Your cart is empty.</p><span>Discover some technology to get started.</span></div>`;
         } else {
-
-            cart.push({
-                ...product,
-                quantity: 1
+            cart.forEach((item, index) => {
+                total += item.price * item.quantity;
+                quantity += item.quantity;
+                const row = document.createElement("div");
+                row.className = "cart-item";
+                row.innerHTML = `<div class="cart-item-info"><h3>${item.name}</h3><p>${money(item.price)}</p><div class="cart-item-controls"><button type="button" data-cart-action="dec" data-index="${index}">−</button><span>${item.quantity}</span><button type="button" data-cart-action="inc" data-index="${index}">+</button></div></div><strong class="cart-item-price">${money(item.price * item.quantity)}</strong><button type="button" data-cart-action="remove" data-index="${index}">×</button>`;
+                cartItems.appendChild(row);
             });
         }
+        if (cartTotal) cartTotal.textContent = money(total);
+        if (cartCount) cartCount.textContent = quantity;
+        if (cartButtonCount) cartButtonCount.textContent = quantity;
+        renderCheckout();
+    }
 
-        updateCart();
+    function openCart() { cartDrawer?.classList.add("active"); }
+    function closeCartPanel() { cartDrawer?.classList.remove("active"); }
 
+    function addToCart(product) {
+        if (!product) return;
+        const item = cart.find(x => x.name === product.name);
+        if (item) item.quantity++;
+        else cart.push({...product, quantity:1});
+        renderCart();
         openCart();
     }
 
-
-    function removeFromCart(index) {
-
-        if (index < 0 || index >= cart.length) return;
-
-        cart.splice(index, 1);
-
-        updateCart();
-    }
-
-
-    function changeQuantity(index, change) {
-
-        if (!cart[index]) return;
-
-        cart[index].quantity += change;
-
-        if (cart[index].quantity <= 0) {
-
-            cart.splice(index, 1);
-        }
-
-        updateCart();
-    }
-
-
-    /* =====================================================
-       OPEN / CLOSE CART
-    ===================================================== */
-
-    function openCart() {
-
-        if (!cartDrawer) return;
-
-        cartDrawer.classList.add("active");
-
-        document.body.classList.add("cart-open");
-    }
-
-
-    function closeCartDrawer() {
-
-        if (!cartDrawer) return;
-
-        cartDrawer.classList.remove("active");
-
-        document.body.classList.remove("cart-open");
-    }
-
-
-    /* =====================================================
-       FLOATING CART BUTTON
-       EXACT HTML ID: #cart-button
-    ===================================================== */
-
-    if (cartButton) {
-
-        cartButton.addEventListener("click", (event) => {
-
-            event.preventDefault();
-            event.stopPropagation();
-
-            openCart();
-        });
-    }
-
-
-    /* =====================================================
-       NAVBAR CART BUTTON
-       EXACT HTML ID: #cart-nav
-    ===================================================== */
-
-    if (cartNav) {
-
-        cartNav.addEventListener("click", (event) => {
-
-            event.preventDefault();
-            event.stopPropagation();
-
-            openCart();
-        });
-    }
-
-
-    /* =====================================================
-       CLOSE CART
-    ===================================================== */
-
-    if (closeCart) {
-
-        closeCart.addEventListener("click", (event) => {
-
-            event.preventDefault();
-
-            closeCartDrawer();
-        });
-    }
-
-
-    /* =====================================================
-       CART ITEM CONTROLS
-    ===================================================== */
-
-    if (cartItemsContainer) {
-
-        cartItemsContainer.addEventListener("click", (event) => {
-
-            const quantityButton =
-                event.target.closest(".quantity-btn");
-
-            const removeButton =
-                event.target.closest(".remove-cart-item");
-
-
-            if (quantityButton) {
-
-                const index =
-                    Number(quantityButton.dataset.index);
-
-                const action =
-                    quantityButton.dataset.action;
-
-                if (action === "increase") {
-
-                    changeQuantity(index, 1);
-
-                } else if (action === "decrease") {
-
-                    changeQuantity(index, -1);
-                }
-
-                return;
-            }
-
-
-            if (removeButton) {
-
-                const index =
-                    Number(removeButton.dataset.index);
-
-                removeFromCart(index);
-            }
-        });
-    }
-
-
-    /* =====================================================
-       CHECKOUT
-    ===================================================== */
-
-    function updateCheckout() {
-
-        if (!checkoutItems || !checkoutTotal) return;
-
-        checkoutItems.innerHTML = "";
-
-        let total = 0;
-
-        if (cart.length === 0) {
-
-            checkoutItems.innerHTML = `
-                <p class="empty-checkout">
-                    Your cart is empty.
-                </p>
-            `;
-
-        } else {
-
-            cart.forEach(item => {
-
-                total += item.price * item.quantity;
-
-                const checkoutItem =
-                    document.createElement("div");
-
-                checkoutItem.className =
-                    "checkout-item";
-
-                checkoutItem.innerHTML = `
-                    <div>
-                        <strong>
-                            ${item.name}
-                        </strong>
-
-                        <span>
-                            × ${item.quantity}
-                        </span>
-                    </div>
-
-                    <strong>
-                        ${formatPrice(
-                            item.price * item.quantity
-                        )}
-                    </strong>
-                `;
-
-                checkoutItems.appendChild(
-                    checkoutItem
-                );
-            });
-        }
-
-        checkoutTotal.textContent =
-            formatPrice(total);
-    }
-
-
-    /* =====================================================
-       CONTINUE TO CHECKOUT
-    ===================================================== */
-
-    if (checkoutBtn) {
-
-        checkoutBtn.addEventListener("click", () => {
-
-            if (cart.length === 0) {
-
-                alert("Your cart is empty.");
-
-                return;
-            }
-
-            closeCartDrawer();
-
-            if (checkoutScreen) {
-
-                checkoutScreen.classList.add("active");
-
-                checkoutScreen.scrollIntoView({
-                    behavior: "smooth",
-                    block: "start"
-                });
-            }
-
-            updateCheckout();
-        });
-    }
-
-
-    /* =====================================================
-       BACK TO CART
-    ===================================================== */
-
-    if (backToCart) {
-
-        backToCart.addEventListener("click", () => {
-
-            if (checkoutScreen) {
-                checkoutScreen.classList.remove("active");
-            }
-
-            openCart();
-        });
-    }
-
-
-    /* =====================================================
-       PLACE ORDER
-    ===================================================== */
-
-    if (placeOrderBtn) {
-
-        placeOrderBtn.addEventListener("click", () => {
-
-            const name =
-                document.getElementById("checkout-name");
-
-            const email =
-                document.getElementById("checkout-email");
-
-            const address =
-                document.getElementById("checkout-address");
-
-            const city =
-                document.getElementById("checkout-city");
-
-            const pincode =
-                document.getElementById("checkout-pincode");
-
-
-            if (
-                !name ||
-                !email ||
-                !address ||
-                !city ||
-                !pincode
-            ) {
-                return;
-            }
-
-
-            if (
-                !name.value.trim() ||
-                !email.value.trim() ||
-                !address.value.trim() ||
-                !city.value.trim() ||
-                !pincode.value.trim()
-            ) {
-
-                alert(
-                    "Please complete all delivery details."
-                );
-
-                return;
-            }
-
-
-            if (!/^\d{6}$/.test(pincode.value.trim())) {
-
-                alert(
-                    "Please enter a valid 6-digit PIN code."
-                );
-
-                return;
-            }
-
-
-            alert(
-                `Order placed successfully!\n\nThank you, ${name.value.trim()}!`
-            );
-
-
-            cart = [];
-
-            updateCart();
-
-            checkoutScreen.classList.remove("active");
-
-            name.value = "";
-            email.value = "";
-            address.value = "";
-            city.value = "";
-            pincode.value = "";
-
-            scrollToSection("home");
-        });
-    }
-
+    cartButton?.addEventListener("click", e => {e.preventDefault(); openCart();});
+    cartNav?.addEventListener("click", e => {e.preventDefault(); openCart();});
+    closeCart?.addEventListener("click", closeCartPanel);
+    cartItems?.addEventListener("click", e => {
+        const btn = e.target.closest("[data-cart-action]");
+        if (!btn) return;
+        const index = Number(btn.dataset.index);
+        const action = btn.dataset.cartAction;
+        if (action === "inc") cart[index].quantity++;
+        if (action === "dec") cart[index].quantity--;
+        if (action === "remove" || cart[index]?.quantity <= 0) cart.splice(index,1);
+        renderCart();
+    });
+
+    checkoutBtn?.addEventListener("click", () => {
+        if (!cart.length) return alert("Your cart is empty.");
+        closeCartPanel();
+        checkoutScreen?.classList.add("active");
+        renderCheckout();
+    });
+
+    backToCart?.addEventListener("click", () => {
+        checkoutScreen?.classList.remove("active");
+        openCart();
+    });
+
+    placeOrderBtn?.addEventListener("click", () => {
+        const name = $("#checkout-name")?.value.trim();
+        const email = $("#checkout-email")?.value.trim();
+        const address = $("#checkout-address")?.value.trim();
+        const city = $("#checkout-city")?.value.trim();
+        const pin = $("#checkout-pincode")?.value.trim();
+        if (!name || !email || !address || !city || !/^\d{6}$/.test(pin || "")) return alert("Please complete all delivery details and enter a valid 6-digit PIN code.");
+        alert(`Order placed successfully!\n\nThank you, ${name}!`);
+        cart = [];
+        renderCart();
+        checkoutScreen?.classList.remove("active");
+        ["#checkout-name","#checkout-email","#checkout-address","#checkout-city","#checkout-pincode"].forEach(id => {const el=$(id); if(el) el.value="";});
+        scrollToSection("home");
+    });
 
     /* =====================================================
        FAVORITES
     ===================================================== */
-
-    function updateFavorites() {
-
-        if (favoritesCount) {
-
-            favoritesCount.textContent =
-                favorites.length;
-        }
-    }
-
-
-    if (favoritesNav) {
-
-        favoritesNav.addEventListener("click", () => {
-
-            if (favorites.length === 0) {
-
-                alert("You haven't added any favorites yet.");
-
-                return;
-            }
-
-            alert(
-                `You have ${favorites.length} favorite technology item(s).`
-            );
+    function renderFavoriteCount() { if (favoritesCount) favoritesCount.textContent = favorites.length; }
+    function toggleFavorite(product) {
+        const i = favorites.findIndex(x => x.name === product.name);
+        if (i >= 0) favorites.splice(i,1); else favorites.push(product);
+        renderFavoriteCount();
+        $$(".favorite-product-btn").forEach(btn => {
+            btn.classList.toggle("active", favorites.some(x => x.name === btn.dataset.product));
+            btn.textContent = btn.classList.contains("active") ? "♥" : "♡";
         });
     }
-
-
-    /* =====================================================
-       HERO BUTTONS
-    ===================================================== */
-
-    if (exploreBtn) {
-
-        exploreBtn.addEventListener("click", () => {
-
-            scrollToSection("discover");
-        });
-    }
-
-
-    if (sellBtn) {
-
-        sellBtn.addEventListener("click", () => {
-
-            scrollToSection("sell");
-        });
-    }
-
-
-    if (startSellingBtn) {
-
-        startSellingBtn.addEventListener("click", () => {
-
-            scrollToSection("submit-tech");
-        });
-    }
-
-
-    /* =====================================================
-       PRODUCT DETAILS
-    ===================================================== */
-
-    function openProductDetails(product) {
-
-        if (!product || !productDetails) return;
-
-        selectedProduct = product;
-
-
-        const detailImage =
-            document.getElementById("detail-image");
-
-        const detailCategory =
-            document.getElementById("detail-category");
-
-        const detailName =
-            document.getElementById("detail-name");
-
-        const detailDescription =
-            document.getElementById("detail-description");
-
-        const detailCreator =
-            document.getElementById("detail-creator");
-
-        const detailPrice =
-            document.getElementById("detail-price");
-
-
-        if (detailImage) {
-            detailImage.textContent = product.image;
-        }
-
-        if (detailCategory) {
-            detailCategory.textContent =
-                product.categoryName.toUpperCase();
-        }
-
-        if (detailName) {
-            detailName.textContent =
-                product.name;
-        }
-
-        if (detailDescription) {
-            detailDescription.textContent =
-                product.description;
-        }
-
-        if (detailCreator) {
-            detailCreator.textContent =
-                product.creator;
-        }
-
-        if (detailPrice) {
-            detailPrice.textContent =
-                formatPrice(product.price);
-        }
-
-
-        productDetails.classList.add("active");
-
-
-        productDetails.scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-        });
-    }
-
-
-    /* =====================================================
-       VIEW PRODUCT BUTTONS
-    ===================================================== */
-
-    productCards.forEach((card, index) => {
-
-        const viewButton =
-            card.querySelector(".product-bottom a");
-
-        if (!viewButton) return;
-
-
-        viewButton.addEventListener("click", (event) => {
-
-            event.preventDefault();
-
-            const product = products[index];
-
-            openProductDetails(product);
-        });
+    favoritesNav?.addEventListener("click", () => {
+        alert(favorites.length ? `You have ${favorites.length} favorite technology item(s).` : "You haven't added any favorites yet.");
     });
 
-
     /* =====================================================
-       GET THIS TECHNOLOGY
+       PRODUCT CARDS / MARKETPLACE
     ===================================================== */
-
-    if (getProductBtn) {
-
-        getProductBtn.addEventListener("click", () => {
-
-            if (!selectedProduct) return;
-
-            addToCart(selectedProduct);
-        });
+    function cardHTML(product, index) {
+        return `<button type="button" class="favorite-product-btn" data-product="${product.name}" aria-label="Favorite">♡</button><div class="product-image">${product.image}</div><div class="product-content"><p class="product-category">${product.categoryName}</p><h3>${product.name}</h3><p>${product.description}</p><div class="product-bottom"><strong>${money(product.price)}</strong><div class="product-actions"><a href="#" data-view-product="${index}">View Product →</a><button type="button" class="add-to-cart-btn" data-add-product="${index}">Add to Cart</button></div></div></div>`;
     }
 
-
-    /* =====================================================
-       BACK TO MARKETPLACE
-    ===================================================== */
-
-    if (backToMarketplace) {
-
-        backToMarketplace.addEventListener("click", () => {
-
-            if (productDetails) {
-
-                productDetails.classList.remove("active");
+    function decorateExistingCards() {
+        $$(".product-card").forEach((card, index) => {
+            if (!products[index]) return;
+            card.dataset.productIndex = index;
+            if (!card.querySelector(".favorite-product-btn")) {
+                const image = $(".product-image", card);
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "favorite-product-btn";
+                btn.dataset.product = products[index].name;
+                btn.textContent = "♡";
+                card.insertBefore(btn, image || card.firstChild);
             }
-
-            scrollToSection("discover");
+            const actions = $(".product-actions", card);
+            const view = $(".product-bottom a", card);
+            if (!actions && view) {
+                const wrapper = document.createElement("div");
+                wrapper.className = "product-actions";
+                view.parentNode.insertBefore(wrapper, view);
+                wrapper.appendChild(view);
+                const add = document.createElement("button");
+                add.type = "button";
+                add.className = "add-to-cart-btn";
+                add.dataset.addProduct = index;
+                add.textContent = "Add to Cart";
+                wrapper.appendChild(add);
+            }
         });
     }
 
+    function renderDynamicProduct(product, index) {
+        if (!productGrid) return;
+        const article = document.createElement("article");
+        article.className = "product-card";
+        article.dataset.category = product.category;
+        article.dataset.productIndex = index;
+        article.innerHTML = cardHTML(product,index);
+        productGrid.appendChild(article);
+    }
 
-    /* =====================================================
-       SEARCH
-    ===================================================== */
+    function openProduct(product) {
+        selectedProduct = product;
+        $("#detail-image") && ($("#detail-image").textContent = product.image);
+        $("#detail-category") && ($("#detail-category").textContent = product.categoryName.toUpperCase());
+        $("#detail-name") && ($("#detail-name").textContent = product.name);
+        $("#detail-description") && ($("#detail-description").textContent = product.description);
+        $("#detail-creator") && ($("#detail-creator").textContent = product.creator);
+        $("#detail-price") && ($("#detail-price").textContent = money(product.price));
+        if (productDetails) {
+            productDetails.style.display = "flex";
+            productDetails.classList.add("active");
+            productDetails.scrollIntoView({behavior:"smooth",block:"start"});
+        }
+    }
+
+    productGrid?.addEventListener("click", e => {
+        const fav = e.target.closest(".favorite-product-btn");
+        const add = e.target.closest("[data-add-product]");
+        const view = e.target.closest("[data-view-product]");
+        if (fav) { e.preventDefault(); const p=products.find(x=>x.name===fav.dataset.product); if(p) toggleFavorite(p); return; }
+        if (add) { e.preventDefault(); const p=products[Number(add.dataset.addProduct)]; if(p) addToCart(p); return; }
+        if (view) { e.preventDefault(); const p=products[Number(view.dataset.viewProduct)]; if(p) openProduct(p); }
+    });
+
+    backToMarketplace?.addEventListener("click", () => {
+        if (productDetails) { productDetails.classList.remove("active"); productDetails.style.display="none"; }
+        scrollToSection("discover");
+    });
+    getProductBtn?.addEventListener("click", () => addToCart(selectedProduct));
 
     function filterProducts() {
-
-        const searchTerm =
-            productSearch
-                ? productSearch.value
-                    .trim()
-                    .toLowerCase()
-                : "";
-
-
-        productCards.forEach(card => {
-
-            const category =
-                card.dataset.category || "";
-
-            const text =
-                card.textContent.toLowerCase();
-
-
-            const categoryMatch =
-                currentCategory === "all" ||
-                category === currentCategory;
-
-
-            const searchMatch =
-                searchTerm === "" ||
-                text.includes(searchTerm);
-
-
-            if (categoryMatch && searchMatch) {
-
-                card.style.display = "";
-
-            } else {
-
-                card.style.display = "none";
-            }
+        const q = (productSearch?.value || "").trim().toLowerCase();
+        $$(".product-card").forEach(card => {
+            const p = products[Number(card.dataset.productIndex)];
+            if (!p) return;
+            const matchCategory = currentCategory === "all" || p.category === currentCategory;
+            const matchSearch = !q || `${p.name} ${p.categoryName} ${p.description}`.toLowerCase().includes(q);
+            card.style.display = matchCategory && matchSearch ? "" : "none";
         });
     }
-
-
-    if (productSearch) {
-
-        productSearch.addEventListener(
-            "input",
-            filterProducts
-        );
-    }
-
+    productSearch?.addEventListener("input", filterProducts);
+    filterButtons.forEach(btn => btn.addEventListener("click", () => {
+        filterButtons.forEach(x=>x.classList.remove("active"));
+        btn.classList.add("active");
+        currentCategory = btn.dataset.category || "all";
+        filterProducts();
+    }));
 
     /* =====================================================
-       CATEGORY FILTERS
+       LISTING / LIVE PREVIEW / PUBLISH
     ===================================================== */
-
-    filterButtons.forEach(button => {
-
-        button.addEventListener("click", () => {
-
-            filterButtons.forEach(btn => {
-                btn.classList.remove("active");
-            });
-
-            button.classList.add("active");
-
-            currentCategory =
-                button.dataset.category || "all";
-
-            filterProducts();
-        });
+    function formMessage(text) { const el=$("#form-message"); if(el) el.textContent=text; }
+    techForm?.addEventListener("submit", e => {
+        e.preventDefault();
+        const name=$("#tech-name")?.value.trim();
+        const category=$("#tech-category")?.value;
+        const description=$("#tech-description")?.value.trim();
+        const price=Number($("#tech-price")?.value);
+        const creator=$("#tech-creator")?.value.trim();
+        if(!name || !category || !description || !price || !creator) return formMessage("Please complete all fields.");
+        $("#preview-image").textContent=imageLabels[category]||"TECH";
+        $("#preview-category").textContent=categoryNames[category]||"TECHNOLOGY";
+        $("#preview-name").textContent=name;
+        $("#preview-description").textContent=description;
+        $("#preview-price").textContent=money(price);
+        $("#preview-creator").textContent=creator;
+        if(listingPreview) listingPreview.style.display="block";
+        formMessage("Preview updated successfully.");
+        listingPreview?.scrollIntoView({behavior:"smooth",block:"center"});
     });
 
-
-    /* =====================================================
-       SELL / LISTING FORM
-    ===================================================== */
-
-    if (techForm) {
-
-        techForm.addEventListener("submit", (event) => {
-
-            event.preventDefault();
-
-
-            const name =
-                document.getElementById("tech-name").value.trim();
-
-            const category =
-                document.getElementById("tech-category").value;
-
-            const description =
-                document.getElementById("tech-description")
-                    .value.trim();
-
-            const price =
-                Number(
-                    document.getElementById("tech-price").value
-                );
-
-            const creator =
-                document.getElementById("tech-creator")
-                    .value.trim();
-
-
-            if (
-                !name ||
-                !category ||
-                !description ||
-                !price ||
-                !creator
-            ) {
-
-                showFormMessage(
-                    "Please complete all fields."
-                );
-
-                return;
-            }
-
-
-            const categoryNames = {
-                ai: "AI / ML",
-                hardware: "Hardware",
-                software: "Software",
-                iot: "IoT / Web"
-            };
-
-
-            const imageLabels = {
-                ai: "AI",
-                hardware: "HW",
-                software: "SW",
-                iot: "IOT"
-            };
-
-
-            document.getElementById(
-                "preview-image"
-            ).textContent =
-                imageLabels[category] || "TECH";
-
-
-            document.getElementById(
-                "preview-category"
-            ).textContent =
-                categoryNames[category] || "TECHNOLOGY";
-
-
-            document.getElementById(
-                "preview-name"
-            ).textContent = name;
-
-
-            document.getElementById(
-                "preview-description"
-            ).textContent = description;
-
-
-            document.getElementById(
-                "preview-price"
-            ).textContent =
-                formatPrice(price);
-
-
-            document.getElementById(
-                "preview-creator"
-            ).textContent = creator;
-
-
-            showFormMessage(
-                "Preview updated successfully."
-            );
-
-
-            const preview =
-                document.getElementById("listing-preview");
-
-            if (preview) {
-
-                preview.scrollIntoView({
-                    behavior: "smooth",
-                    block: "center"
-                });
-            }
-        });
-    }
-
-
-    /* =====================================================
-       FORM MESSAGE
-    ===================================================== */
-
-    function showFormMessage(message) {
-
-        const formMessage =
-            document.getElementById("form-message");
-
-        if (!formMessage) return;
-
-        formMessage.textContent = message;
-    }
-
-
-    /* =====================================================
-       PUBLISH LISTING
-    ===================================================== */
-
-    if (publishListingBtn) {
-
-        publishListingBtn.addEventListener("click", () => {
-
-            const name =
-                document.getElementById("tech-name");
-
-            const category =
-                document.getElementById("tech-category");
-
-            const description =
-                document.getElementById("tech-description");
-
-            const price =
-                document.getElementById("tech-price");
-
-            const creator =
-                document.getElementById("tech-creator");
-
-
-            if (
-                !name ||
-                !category ||
-                !description ||
-                !price ||
-                !creator
-            ) {
-                return;
-            }
-
-
-            if (
-                !name.value.trim() ||
-                !category.value ||
-                !description.value.trim() ||
-                !price.value ||
-                !creator.value.trim()
-            ) {
-
-                alert(
-                    "Please create a listing first."
-                );
-
-                return;
-            }
-
-
-            const categoryNames = {
-                ai: "Artificial Intelligence",
-                hardware: "Hardware",
-                software: "Software",
-                iot: "IoT / Web"
-            };
-
-
-            const imageLabels = {
-                ai: "AI",
-                hardware: "HW",
-                software: "SW",
-                iot: "IOT"
-            };
-
-
-            const newProduct = {
-
-                name: name.value.trim(),
-
-                category: category.value,
-
-                categoryName:
-                    categoryNames[category.value],
-
-                description:
-                    description.value.trim(),
-
-                price:
-                    Number(price.value),
-
-                creator:
-                    creator.value.trim(),
-
-                image:
-                    imageLabels[category.value]
-            };
-
-
-            products.push(newProduct);
-
-
-            createProductCard(newProduct);
-
-
-            alert(
-                `${newProduct.name} has been published to the marketplace!`
-            );
-
-
-            techForm.reset();
-
-
-            showFormMessage(
-                "Listing published successfully."
-            );
-
-
-            scrollToSection("discover");
-        });
-    }
-
-
-    /* =====================================================
-       CREATE PRODUCT CARD
-    ===================================================== */
-
-    function createProductCard(product) {
-
-        const grid =
-            document.querySelector(".product-grid");
-
-        if (!grid) return;
-
-
-        const article =
-            document.createElement("article");
-
-        article.className =
-            "product-card";
-
-        article.dataset.category =
-            product.category;
-
-
-        article.innerHTML = `
-
-            <div class="product-image">
-                ${product.image}
-            </div>
-
-            <div class="product-content">
-
-                <p class="product-category">
-                    ${product.categoryName}
-                </p>
-
-                <h3>
-                    ${product.name}
-                </h3>
-
-                <p>
-                    ${product.description}
-                </p>
-
-                <div class="product-bottom">
-
-                    <strong>
-                        ${formatPrice(product.price)}
-                    </strong>
-
-                    <a href="#">
-                        View Product →
-                    </a>
-
-                </div>
-
-            </div>
-        `;
-
-
-        grid.appendChild(article);
-
-
-        const viewButton =
-            article.querySelector(".product-bottom a");
-
-
-        if (viewButton) {
-
-            viewButton.addEventListener(
-                "click",
-                event => {
-
-                    event.preventDefault();
-
-                    openProductDetails(product);
-                }
-            );
-        }
-    }
-
-
-    /* =====================================================
-       ESCAPE KEY
-    ===================================================== */
-
-    document.addEventListener("keydown", event => {
-
-        if (event.key === "Escape") {
-
-            closeCartDrawer();
-
-            if (checkoutScreen) {
-                checkoutScreen.classList.remove("active");
-            }
-
-            if (productDetails) {
-                productDetails.classList.remove("active");
-            }
-        }
+    publishListingBtn?.addEventListener("click", () => {
+        const name=$("#tech-name")?.value.trim();
+        const category=$("#tech-category")?.value;
+        const description=$("#tech-description")?.value.trim();
+        const price=Number($("#tech-price")?.value);
+        const creator=$("#tech-creator")?.value.trim();
+        if(!name || !category || !description || !price || !creator) return alert("Please create a listing first.");
+        const product={name,category,categoryName:categoryNames[category],description,price,creator,image:imageLabels[category]};
+        products.push(product);
+        renderDynamicProduct(product,products.length-1);
+        formMessage("Listing published successfully.");
+        alert(`${name} has been published to the marketplace!`);
+        techForm?.reset();
+        filterProducts();
+        scrollToSection("discover");
     });
 
-
     /* =====================================================
-       INITIAL STATE
+       FIX VISIBILITY FOR DYNAMIC PANELS
     ===================================================== */
+    const fixStyle = document.createElement("style");
+    fixStyle.textContent = `#product-details.active{display:flex!important}.favorite-product-btn{font-family:inherit}.product-card{position:relative}.listing-preview-panel{display:block}`;
+    document.head.appendChild(fixStyle);
 
-    updateCart();
-
-    updateFavorites();
-
+    decorateExistingCards();
+    renderCart();
+    renderFavoriteCount();
     filterProducts();
 
-
     /* =====================================================
-       GSAP
-       Only run if GSAP actually loaded
+       RESTORED ORIGINAL GSAP ANIMATION SYSTEM
     ===================================================== */
+    if (typeof gsap === "undefined") {
+        console.warn("Origyn: GSAP did not load; interactions still work.");
+        return;
+    }
+    if (typeof ScrollTrigger !== "undefined") gsap.registerPlugin(ScrollTrigger);
 
-    if (typeof gsap !== "undefined") {
+    const intro = gsap.timeline();
+    intro.from(".logo", {y:-30,opacity:0,duration:1,ease:"power3.out"})
+         .from(".nav-links a", {y:-20,opacity:0,duration:.6,stagger:.1,ease:"power3.out"},"-=.5")
+         .from("#home h1", {y:80,opacity:0,duration:1,ease:"power3.out"})
+         .from("#home p", {y:40,opacity:0,duration:.8,ease:"power3.out"});
 
-        if (typeof ScrollTrigger !== "undefined") {
+    gsap.fromTo("#explore-btn",{y:30,opacity:0},{y:0,opacity:1,duration:.8,delay:1.8,ease:"power3.out"});
+    gsap.fromTo("#sell-btn",{y:30,opacity:0},{y:0,opacity:1,duration:.8,delay:2,ease:"power3.out"});
 
-            gsap.registerPlugin(ScrollTrigger);
-        }
+    if (typeof ScrollTrigger !== "undefined") {
+        gsap.from("#discover .section-heading",{y:100,opacity:0,duration:1,scrollTrigger:{trigger:"#discover",start:"top 80%",toggleActions:"play none none reverse"}});
+        gsap.from(".product-card",{y:100,opacity:0,duration:.8,stagger:.5,ease:"power3.out",scrollTrigger:{trigger:".product-grid",start:"top 80%",toggleActions:"play none none reverse"}});
+        gsap.from(".discover-card",{opacity:0,duration:.7,stagger:.2,ease:"power3.out",scrollTrigger:{trigger:"#discover",start:"top 70%",toggleActions:"play none none reverse"}});
 
+        /* ORIGINAL PINNED DELIVERY STORY */
+        ScrollTrigger.create({trigger:"#story",start:"top top",end:"+=2000",pin:true,anticipatePin:1});
 
-        /* Hero animation */
+        gsap.to(".delivery-man",{x:500,scrollTrigger:{trigger:"#story",start:"top top",end:"+=2000",scrub:1}});
+        gsap.to(".delivery-box",{x:500,scrollTrigger:{trigger:"#story",start:"top top",end:"+=2000",scrub:1}});
 
-        gsap.from("#home h1", {
-            opacity: 0,
-            y: 40,
-            duration: 1,
-            ease: "power3.out"
+        const walking=gsap.timeline({repeat:-1,paused:true,yoyo:false});
+        walking.to(".delivery-man",{y:-8,rotation:3,duration:.25,ease:"power1.inOut"})
+               .to(".delivery-man",{y:0,rotation:-3,duration:.25,ease:"power1.inOut"});
+
+        const collision=gsap.timeline({paused:true});
+        collision.to(".delivery-man",{rotation:-8,x:"+=20",duration:.2})
+                 .to(".delivery-man",{rotation:8,x:"-=10",duration:.2})
+                 .to(".delivery-man",{rotation:-15,y:25,duration:.25});
+
+        const boxOpen=gsap.timeline({paused:true});
+        boxOpen.to(".delivery-box",{rotation:-15,scale:1.15,duration:.25,ease:"power2.out"})
+               .to(".delivery-box",{rotation:15,scale:1,duration:.25,ease:"power2.inOut"});
+
+        const techReveal=gsap.timeline({paused:true});
+        techReveal.fromTo(".tech-item",{y:40,opacity:0,scale:.8},{y:0,opacity:1,scale:1,duration:.6,stagger:.2,ease:"back.out(1.7)"});
+
+        let collided=false, opened=false, revealed=false;
+        ScrollTrigger.create({
+            trigger:"#story",start:"top top",end:"+=2000",
+            onEnter:()=>walking.play(),
+            onEnterBack:()=>{walking.play();collided=false;opened=false;revealed=false;collision.reverse();boxOpen.reverse();techReveal.reverse();},
+            onLeave:()=>walking.pause(),onLeaveBack:()=>walking.pause(),
+            onUpdate:self=>{
+                if(self.progress>.45 && !collided){collided=true;walking.pause();collision.play();}
+                if(self.progress>.70 && !opened){opened=true;boxOpen.play();}
+                if(self.progress>.82 && !revealed){revealed=true;techReveal.play();}
+            }
         });
 
+        gsap.from(".sell-content",{x:-50,opacity:0,duration:.8,ease:"power3.out",scrollTrigger:{trigger:"#sell",start:"top 70%",toggleActions:"play none none reverse"}});
+        gsap.from(".sell-step",{opacity:0,duration:.7,stagger:.2,ease:"power3.out",scrollTrigger:{trigger:".sell-steps",start:"top 75%",toggleActions:"play none none reverse"}});
+        gsap.from(".contact-content",{y:80,opacity:0,duration:1,ease:"power3.out",scrollTrigger:{trigger:"#contact",start:"top 75%",toggleActions:"play none none reverse"}});
 
-        gsap.from("#home p", {
-            opacity: 0,
-            y: 25,
-            duration: 0.8,
-            delay: 0.2,
-            ease: "power3.out"
-        });
+        const aboutTimeline=gsap.timeline({scrollTrigger:{trigger:"#about",start:"top 70%",toggleActions:"play none none reverse"}});
+        aboutTimeline.from(".about-heading",{x:-70,opacity:0,duration:.8,ease:"power3.out"})
+                     .from(".about-text",{y:50,opacity:0,duration:.7,ease:"power3.out"},"-=.4")
+                     .from(".about-stat",{y:50,opacity:0,duration:.6,stagger:.2,ease:"power3.out"},"-=.3");
 
-
-        gsap.from(".hero-buttons button", {
-            opacity: 0,
-            y: 20,
-            duration: 0.6,
-            delay: 0.4,
-            stagger: 0.1,
-            ease: "power3.out"
-        });
-
-
-        /* Product cards */
-
-        if (typeof ScrollTrigger !== "undefined") {
-
-            gsap.from(".product-card", {
-
-                opacity: 0,
-                y: 40,
-                duration: 0.7,
-                stagger: 0.1,
-
-                scrollTrigger: {
-                    trigger: ".product-grid",
-                    start: "top 85%"
-                }
-            });
-
-
-            /* Story animation */
-
-            gsap.from(".delivery-man", {
-
-                x: -150,
-                opacity: 0,
-                duration: 1,
-
-                scrollTrigger: {
-                    trigger: "#story",
-                    start: "top 75%"
-                }
-            });
-
-
-            gsap.from(".delivery-box", {
-
-                y: -80,
-                opacity: 0,
-                duration: 0.8,
-                delay: 0.3,
-
-                scrollTrigger: {
-                    trigger: "#story",
-                    start: "top 75%"
-                }
-            });
-
-
-            gsap.from(".rock", {
-
-                x: 80,
-                opacity: 0,
-                duration: 0.8,
-                delay: 0.5,
-
-                scrollTrigger: {
-                    trigger: "#story",
-                    start: "top 75%"
-                }
-            });
-
-
-            gsap.from(".tech-item", {
-
-                opacity: 0,
-                scale: 0.5,
-                duration: 0.6,
-                stagger: 0.15,
-
-                scrollTrigger: {
-                    trigger: ".tech-reveal",
-                    start: "top 80%"
-                }
-            });
-
-
-            /* Sell steps */
-
-            gsap.from(".sell-step", {
-
-                opacity: 0,
-                y: 30,
-                duration: 0.6,
-                stagger: 0.15,
-
-                scrollTrigger: {
-                    trigger: ".sell-steps",
-                    start: "top 80%"
-                }
-            });
-        }
+        ScrollTrigger.refresh();
+    } else {
+        gsap.from("#home h1",{opacity:0,y:40,duration:1});
     }
 
+    document.addEventListener("keydown", e => {
+        if(e.key === "Escape") {
+            closeCartPanel();
+            checkoutScreen?.classList.remove("active");
+            if(productDetails){productDetails.classList.remove("active");productDetails.style.display="none";}
+        }
+    });
 
-    /* =====================================================
-       DEBUG MESSAGE
-       Remove later if you want
-    ===================================================== */
-
-    console.log("Origyn script loaded successfully.");
-    console.log("Floating cart:", cartButton);
-    console.log("Navbar cart:", cartNav);
-
+    console.log("Origyn restored: marketplace + cart + original Story animations loaded.");
 });
