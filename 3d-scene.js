@@ -3,12 +3,6 @@
    Isolated 3D story layer. Marketplace/cart/checkout code is untouched.
 ========================================================= */
 
-/*
-  This file intentionally uses the classic Three.js build instead of an
-  ES-module import. That keeps the scene reliable when Origyn is opened
-  directly from VS Code/Live Server and avoids browser module/CORS issues.
-*/
-
 const root = document.querySelector(".delivery-scene");
 const canvas = document.getElementById("origyn-3d-canvas");
 
@@ -47,7 +41,6 @@ if (!root || !canvas) {
   const world = new THREE.Group();
   scene.add(world);
 
-  // Environment
   const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(30, 16),
     new THREE.MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.92 })
@@ -71,7 +64,7 @@ if (!root || !canvas) {
   lane.position.y = 0.09;
   world.add(lane);
 
-  // Delivery character
+  // ---------------- DELIVERY CHARACTER ----------------
   const person = new THREE.Group();
   person.position.set(-4.6, 0, 0);
   world.add(person);
@@ -125,8 +118,6 @@ if (!root || !canvas) {
   const armR = armL.clone();
   armL.position.set(-0.56, 2.05, 0);
   armR.position.set(0.56, 2.05, 0);
-  armL.rotation.z = 0.45;
-  armR.rotation.z = -0.45;
   person.add(armL, armR);
 
   const handL = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 10), skinMat);
@@ -147,13 +138,14 @@ if (!root || !canvas) {
   shoeR.position.set(0.22, 0.23, 0.13);
   person.add(shoeL, shoeR);
 
-  // Parcel
+  // ---------------- PARCEL ----------------
   const box = new THREE.Group();
-  box.position.set(-3.0, 0.65, 0);
   world.add(box);
 
-  const boxMat = new THREE.MeshStandardMaterial({ color: 0xb8783f, roughness: 0.78 });
-  const parcel = new THREE.Mesh(new THREE.BoxGeometry(1.25, 1.05, 1.25), boxMat);
+  const parcel = new THREE.Mesh(
+    new THREE.BoxGeometry(1.25, 1.05, 1.25),
+    new THREE.MeshStandardMaterial({ color: 0xb8783f, roughness: 0.78 })
+  );
   parcel.castShadow = true;
   parcel.receiveShadow = true;
   box.add(parcel);
@@ -164,7 +156,7 @@ if (!root || !canvas) {
   );
   box.add(tape);
 
-  // Rock obstacle
+  // ---------------- OBSTACLE ----------------
   const rock = new THREE.Mesh(
     new THREE.DodecahedronGeometry(0.58, 1),
     new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 1 })
@@ -174,7 +166,7 @@ if (!root || !canvas) {
   rock.castShadow = true;
   world.add(rock);
 
-  // Technology reveal cards
+  // ---------------- TECHNOLOGY REVEAL ----------------
   const techGroup = new THREE.Group();
   techGroup.position.set(3.0, 1.9, 0);
   world.add(techGroup);
@@ -222,7 +214,6 @@ if (!root || !canvas) {
     );
     labelMesh.position.z = 0.101;
     card.add(labelMesh);
-
     techGroup.add(card);
     techMeshes.push(card);
   });
@@ -238,6 +229,7 @@ if (!root || !canvas) {
     camera.updateProjectionMatrix();
   }
 
+  // Scroll controls one continuous timeline. Moving upward naturally reverses it.
   function updateScrollTarget() {
     const rect = root.getBoundingClientRect();
     const viewport = window.innerHeight || 1;
@@ -247,56 +239,99 @@ if (!root || !canvas) {
     state.target = THREE.MathUtils.clamp((start - rect.top) / span, 0, 1);
   }
 
+  function smooth01(value) {
+    return THREE.MathUtils.smoothstep(THREE.MathUtils.clamp(value, 0, 1), 0, 1);
+  }
+
   function animateScene(time) {
     const dt = Math.min((time - last) / 1000, 0.05);
     last = time;
-    state.progress = THREE.MathUtils.damp(state.progress, state.target, 7, dt);
 
+    // Fast enough to feel attached to the scroll, but still buttery when reversing.
+    state.progress = THREE.MathUtils.damp(state.progress, state.target, 12, dt);
     const p = state.progress;
-    const walk = THREE.MathUtils.smoothstep(THREE.MathUtils.clamp(p / 0.38, 0, 1), 0, 1);
-    const stumble = THREE.MathUtils.smoothstep(THREE.MathUtils.clamp((p - 0.34) / 0.18, 0, 1), 0, 1);
-    const recover = THREE.MathUtils.smoothstep(THREE.MathUtils.clamp((p - 0.5) / 0.16, 0, 1), 0, 1);
-    const reveal = THREE.MathUtils.smoothstep(THREE.MathUtils.clamp((p - 0.58) / 0.42, 0, 1), 0, 1);
 
-    // Walk toward the obstacle.
-    person.position.x = THREE.MathUtils.lerp(-4.6, 0.05, walk);
+    const walk = smooth01(p / 0.34);
+    const approach = smooth01((p - 0.27) / 0.10);
+    const stumble = smooth01((p - 0.34) / 0.13);
+    const recover = smooth01((p - 0.47) / 0.18);
+    const reveal = smooth01((p - 0.61) / 0.39);
 
-    const step = Math.sin(time * 0.012) * 0.18 * walk * (1 - stumble);
-    legL.rotation.z = 0.08 + step;
-    legR.rotation.z = -0.08 - step;
-    armL.rotation.z = 0.45 - step * 1.5;
-    armR.rotation.z = -0.45 - step * 1.5;
-    handL.position.x = -0.83 - step * 0.15;
-    handR.position.x = 0.83 + step * 0.15;
+    // ---- Walk cycle ----
+    const walkX = THREE.MathUtils.lerp(-4.6, 0.55, walk);
+    const finishX = THREE.MathUtils.lerp(0.55, 2.05, recover);
+    const stumbleX = THREE.MathUtils.lerp(walkX, 0.35, stumble);
+    person.position.x = THREE.MathUtils.lerp(stumbleX, finishX, recover);
 
-    // A visible stumble at the rock, followed by recovery.
-    const stumbleAmount = stumble * (1 - recover * 0.8);
-    person.position.y = Math.sin(time * 0.024) * 0.04 * walk * (1 - stumble);
-    person.rotation.z = THREE.MathUtils.lerp(0, -0.22, stumbleAmount);
-    person.rotation.x = THREE.MathUtils.lerp(0, 0.08, stumbleAmount);
+    const stride = Math.sin(time * 0.0125) * 0.22 * walk * (1 - stumble);
+    legL.rotation.z = 0.08 + stride;
+    legR.rotation.z = -0.08 - stride;
+    armL.rotation.z = 0.45 - stride * 1.5;
+    armR.rotation.z = -0.45 - stride * 1.5;
+    handL.position.x = -0.83 - stride * 0.15;
+    handR.position.x = 0.83 + stride * 0.15;
 
-    // Parcel starts with the character and drops forward during the stumble.
-    const carryX = person.position.x - 0.85;
-    const dropX = THREE.MathUtils.lerp(carryX, -0.15, stumble);
-    box.position.x = dropX;
-    box.position.y = THREE.MathUtils.lerp(1.55, 0.65, stumble);
-    box.rotation.z = THREE.MathUtils.lerp(0, -0.2, stumble);
+    // Small body bounce while walking.
+    person.position.y = Math.sin(time * 0.025) * 0.045 * walk * (1 - stumble);
+    person.rotation.z = 0;
+    person.rotation.x = 0;
 
-    rock.rotation.y += dt * 0.45;
-    rock.rotation.z = Math.sin(time * 0.0015) * 0.04;
+    // ---- Stumble: anticipation -> hit -> recovery ----
+    const impactWave = Math.sin(stumble * Math.PI);
+    const fallAmount = impactWave * (1 - recover * 0.65);
+    person.rotation.z = -0.34 * fallAmount;
+    person.rotation.x = 0.10 * fallAmount;
+    person.position.y += -0.16 * fallAmount;
 
-    // Technology rises after the obstacle moment.
+    armL.rotation.z += -0.85 * fallAmount;
+    armR.rotation.z += 0.85 * fallAmount;
+    legL.rotation.z += 0.55 * fallAmount;
+    legR.rotation.z += -0.35 * fallAmount;
+
+    // ---- Parcel stays with him, then flies forward and lands ----
+    const carryX = person.position.x - 0.92;
+    const throwT = smooth01((p - 0.36) / 0.17);
+    const landT = smooth01((p - 0.53) / 0.10);
+
+    const thrownX = THREE.MathUtils.lerp(carryX, 1.25, throwT);
+    const flightArc = Math.sin(throwT * Math.PI) * 1.05;
+    box.position.x = THREE.MathUtils.lerp(thrownX, 1.55, landT);
+    box.position.y = THREE.MathUtils.lerp(1.55, 0.65, throwT) + flightArc * (1 - landT);
+    box.position.z = Math.sin(throwT * Math.PI) * 0.55;
+    box.rotation.z = -0.45 * throwT + 0.65 * landT;
+    box.rotation.y = 1.2 * throwT;
+
+    // ---- Rock reacts slightly to the impact ----
+    const rockHit = smooth01((p - 0.34) / 0.10);
+    const rockBounce = Math.sin(rockHit * Math.PI);
+    rock.rotation.y += dt * 0.18;
+    rock.rotation.z = Math.sin(time * 0.0015) * 0.035 + rockBounce * 0.08;
+    rock.position.y = 0.55 + rockBounce * 0.08;
+
+    // ---- Technology reveal ----
     techMeshes.forEach((mesh, i) => {
-      const local = THREE.MathUtils.clamp((reveal - i * 0.13) / 0.45, 0, 1);
-      const eased = THREE.MathUtils.smoothstep(local, 0, 1);
-      mesh.scale.setScalar(Math.max(0.001, eased));
-      mesh.position.y = (i === 1 ? 0.15 : 0) + Math.sin(time * 0.002 + i) * 0.08 * eased;
-      mesh.rotation.y = THREE.MathUtils.lerp(0.7, 0, eased);
+      const local = smooth01((reveal - i * 0.16) / 0.48);
+      const pop = Math.sin(local * Math.PI);
+      mesh.scale.setScalar(Math.max(0.001, local));
+      mesh.position.y = (i === 1 ? 0.15 : 0) + pop * 0.18;
+      mesh.position.z = pop * 0.35;
+      mesh.rotation.y = THREE.MathUtils.lerp(0.9, 0, local);
+      mesh.rotation.z = THREE.MathUtils.lerp((i - 1) * 0.16, 0, local);
     });
 
-    camera.position.x = THREE.MathUtils.lerp(0, 0.35, reveal);
-    camera.position.y = THREE.MathUtils.lerp(3.2, 3.45, reveal);
-    camera.lookAt(0.2, 1.55, 0);
+    techGroup.position.x = THREE.MathUtils.lerp(3.8, 3.0, reveal);
+    techGroup.position.y = THREE.MathUtils.lerp(1.35, 1.9, reveal);
+
+    // ---- Cinematic camera movement ----
+    const cameraReveal = reveal * reveal;
+    camera.position.x = THREE.MathUtils.lerp(-0.15, 0.45, cameraReveal);
+    camera.position.y = THREE.MathUtils.lerp(3.15, 3.5, cameraReveal);
+    camera.position.z = THREE.MathUtils.lerp(11.5, 10.7, cameraReveal);
+    camera.lookAt(
+      THREE.MathUtils.lerp(0, 0.7, cameraReveal),
+      THREE.MathUtils.lerp(1.5, 1.75, cameraReveal),
+      0
+    );
 
     renderer.render(scene, camera);
     requestAnimationFrame(animateScene);
@@ -307,5 +342,6 @@ if (!root || !canvas) {
   window.addEventListener("resize", resize, { passive: true });
   window.addEventListener("scroll", updateScrollTarget, { passive: true });
   requestAnimationFrame(animateScene);
-  console.log("Origyn 3D loaded successfully.");
+
+  console.log("Origyn 3D animation loaded — scroll-controlled reversible story ready.");
 }
