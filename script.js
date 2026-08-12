@@ -1,10 +1,10 @@
 /* =========================================================
-   ORIGYN — STABLE MARKETPLACE + ORIGINAL STORY ANIMATIONS
+   ORIGYN — MARKETPLACE + CART + ORIGINAL STORY ANIMATIONS
 ========================================================= */
 
 document.addEventListener("DOMContentLoaded", () => {
-    const $ = (s, root = document) => root.querySelector(s);
-    const $$ = (s, root = document) => [...root.querySelectorAll(s)];
+    const $ = (selector, root = document) => root.querySelector(selector);
+    const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
     const cartButton = $("#cart-button");
     const cartNav = $("#cart-nav");
@@ -22,22 +22,34 @@ document.addEventListener("DOMContentLoaded", () => {
     const placeOrderBtn = $("#place-order-btn");
     const favoritesNav = $("#favorites-nav");
     const favoritesCount = $("#favorites-count");
+    const productGrid = $(".product-grid");
     const productSearch = $("#product-search");
     const filterButtons = $$(".filter-btn");
-    const productGrid = $(".product-grid");
     const productDetails = $("#product-details");
+    const discoverSection = $("#discover");
+    const marketplaceControls = $(".marketplace-controls");
+    const storySection = $("#story");
+
+    /* Repair the old marketplace markup at runtime. */
+    if (discoverSection) {
+        if (marketplaceControls && marketplaceControls.parentElement !== discoverSection) {
+            discoverSection.appendChild(marketplaceControls);
+        }
+        if (productGrid && productGrid.parentElement !== discoverSection) {
+            discoverSection.appendChild(productGrid);
+        }
+    }
+    if (productDetails && storySection && productDetails.parentElement !== document.querySelector("main")) {
+        storySection.parentElement.insertBefore(productDetails, storySection);
+    }
+
     const backToMarketplace = $("#back-to-marketplace");
     const getProductBtn = $("#get-product-btn");
     const techForm = $("#tech-form");
     const listingPreview = $("#listing-preview");
     const publishListingBtn = $("#publish-listing-btn");
 
-    let cart = [];
-    let favorites = [];
-    let selectedProduct = null;
-    let currentCategory = "all";
-
-    const products = [
+    let products = [
         {name:"NeuraVision AI",category:"ai",categoryName:"Artificial Intelligence",description:"An intelligent AI platform designed to automate everyday workflows.",price:2499,creator:"Origyn Labs",image:"AI"},
         {name:"RoboArm X1",category:"hardware",categoryName:"Hardware",description:"A modular robotic arm built for automation and experimentation.",price:18999,creator:"Origyn Labs",image:"HW"},
         {name:"DevFlow",category:"software",categoryName:"Software",description:"A developer productivity tool designed to simplify modern workflows.",price:999,creator:"Origyn Labs",image:"SW"},
@@ -48,34 +60,35 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const categoryNames = {ai:"Artificial Intelligence",hardware:"Hardware",software:"Software",iot:"IoT / Web"};
     const imageLabels = {ai:"AI",hardware:"HW",software:"SW",iot:"IOT"};
-
-    function money(value) { return `₹${Number(value || 0).toLocaleString("en-IN")}`; }
+    let cart = [];
+    let favorites = [];
+    let selectedProduct = null;
+    let currentCategory = "all";
+    const money = value => `₹${Number(value || 0).toLocaleString("en-IN")}`;
 
     function scrollToSection(id) {
         const el = document.getElementById(id);
-        if (el) el.scrollIntoView({behavior:"smooth", block:"start"});
+        if (!el) return;
+        const header = $("header");
+        const offset = header ? header.offsetHeight + 12 : 90;
+        const top = el.getBoundingClientRect().top + window.scrollY - offset;
+        window.scrollTo({top, behavior:"smooth"});
     }
 
-    /* =====================================================
-       NAVIGATION
-    ===================================================== */
-    $$(".nav-links a").forEach(link => {
-        link.addEventListener("click", e => {
-            const href = link.getAttribute("href");
-            if (href && href.startsWith("#")) {
-                e.preventDefault();
-                scrollToSection(href.slice(1));
-            }
-        });
-    });
-
+    $$(".nav-links a").forEach(link => link.addEventListener("click", event => {
+        const href = link.getAttribute("href");
+        if (!href || !href.startsWith("#")) return;
+        event.preventDefault();
+        scrollToSection(href.slice(1));
+    }));
     $("#explore-btn")?.addEventListener("click", () => scrollToSection("discover"));
     $("#sell-btn")?.addEventListener("click", () => scrollToSection("sell"));
     $("#start-selling-btn")?.addEventListener("click", () => scrollToSection("submit-tech"));
 
-    /* =====================================================
-       CART
-    ===================================================== */
+    function moveCheckoutToBody() {
+        if (checkoutScreen && checkoutScreen.parentElement !== document.body) document.body.appendChild(checkoutScreen);
+    }
+
     function renderCheckout() {
         if (!checkoutItems || !checkoutTotal) return;
         checkoutItems.innerHTML = "";
@@ -84,10 +97,11 @@ document.addEventListener("DOMContentLoaded", () => {
             checkoutItems.innerHTML = `<p class="empty-checkout">Your cart is empty.</p>`;
         } else {
             cart.forEach(item => {
-                total += item.price * item.quantity;
+                const lineTotal = Number(item.price) * Number(item.quantity);
+                total += lineTotal;
                 const row = document.createElement("div");
                 row.className = "checkout-item";
-                row.innerHTML = `<div><strong>${item.name}</strong><div class="checkout-item-quantity">× ${item.quantity}</div></div><strong class="checkout-item-price">${money(item.price * item.quantity)}</strong>`;
+                row.innerHTML = `<div><div class="checkout-item-name">${item.name}</div><div class="checkout-item-quantity">Quantity: ${item.quantity}</div></div><div class="checkout-item-price">${money(lineTotal)}</div>`;
                 checkoutItems.appendChild(row);
             });
         }
@@ -102,11 +116,11 @@ document.addEventListener("DOMContentLoaded", () => {
             cartItems.innerHTML = `<div class="cart-empty"><p>Your cart is empty.</p><span>Discover some technology to get started.</span></div>`;
         } else {
             cart.forEach((item, index) => {
-                total += item.price * item.quantity;
-                quantity += item.quantity;
+                total += Number(item.price) * Number(item.quantity);
+                quantity += Number(item.quantity);
                 const row = document.createElement("div");
                 row.className = "cart-item";
-                row.innerHTML = `<div class="cart-item-info"><h3>${item.name}</h3><p>${money(item.price)}</p><div class="cart-item-controls"><button type="button" data-cart-action="dec" data-index="${index}">−</button><span>${item.quantity}</span><button type="button" data-cart-action="inc" data-index="${index}">+</button></div></div><strong class="cart-item-price">${money(item.price * item.quantity)}</strong><button type="button" data-cart-action="remove" data-index="${index}">×</button>`;
+                row.innerHTML = `<div class="cart-item-info"><h3>${item.name}</h3><p>${money(item.price)}</p><div class="cart-item-controls"><button type="button" data-cart-action="dec" data-index="${index}">−</button><span>${item.quantity}</span><button type="button" data-cart-action="inc" data-index="${index}">+</button></div></div><strong class="cart-item-price">${money(item.price * item.quantity)}</strong><button type="button" data-cart-action="remove" data-index="${index}" aria-label="Remove item">×</button>`;
                 cartItems.appendChild(row);
             });
         }
@@ -116,45 +130,63 @@ document.addEventListener("DOMContentLoaded", () => {
         renderCheckout();
     }
 
-    function openCart() { cartDrawer?.classList.add("active"); }
+    function openCart() {
+        moveCheckoutToBody();
+        checkoutScreen?.classList.remove("active");
+        cartDrawer?.classList.add("active");
+    }
     function closeCartPanel() { cartDrawer?.classList.remove("active"); }
 
     function addToCart(product) {
         if (!product) return;
-        const item = cart.find(x => x.name === product.name);
-        if (item) item.quantity++;
+        const existing = cart.find(item => item.name === product.name);
+        if (existing) existing.quantity += 1;
         else cart.push({...product, quantity:1});
         renderCart();
         openCart();
     }
 
-    cartButton?.addEventListener("click", e => {e.preventDefault(); openCart();});
-    cartNav?.addEventListener("click", e => {e.preventDefault(); openCart();});
-    closeCart?.addEventListener("click", closeCartPanel);
-    cartItems?.addEventListener("click", e => {
-        const btn = e.target.closest("[data-cart-action]");
-        if (!btn) return;
-        const index = Number(btn.dataset.index);
-        const action = btn.dataset.cartAction;
-        if (action === "inc") cart[index].quantity++;
-        if (action === "dec") cart[index].quantity--;
-        if (action === "remove" || cart[index]?.quantity <= 0) cart.splice(index,1);
+    cartButton?.addEventListener("click", event => { event.preventDefault(); event.stopPropagation(); openCart(); });
+    cartNav?.addEventListener("click", event => { event.preventDefault(); event.stopPropagation(); openCart(); });
+    closeCart?.addEventListener("click", event => { event.preventDefault(); event.stopPropagation(); closeCartPanel(); });
+
+    cartItems?.addEventListener("click", event => {
+        const button = event.target.closest("[data-cart-action]");
+        if (!button) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const index = Number(button.dataset.index);
+        const action = button.dataset.cartAction;
+        const item = cart[index];
+        if (!item) return;
+        if (action === "inc") item.quantity += 1;
+        if (action === "dec") item.quantity -= 1;
+        if (action === "remove" || item.quantity <= 0) cart.splice(index, 1);
         renderCart();
     });
 
-    checkoutBtn?.addEventListener("click", () => {
+    checkoutBtn?.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
         if (!cart.length) return alert("Your cart is empty.");
+        moveCheckoutToBody();
+        renderCheckout();
         closeCartPanel();
         checkoutScreen?.classList.add("active");
-        renderCheckout();
+        checkoutScreen?.scrollTo({top:0, behavior:"instant"});
+        window.scrollTo({top:0, behavior:"instant"});
     });
 
-    backToCart?.addEventListener("click", () => {
+    backToCart?.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
         checkoutScreen?.classList.remove("active");
         openCart();
     });
 
-    placeOrderBtn?.addEventListener("click", () => {
+    placeOrderBtn?.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
         const name = $("#checkout-name")?.value.trim();
         const email = $("#checkout-email")?.value.trim();
         const address = $("#checkout-address")?.value.trim();
@@ -165,75 +197,76 @@ document.addEventListener("DOMContentLoaded", () => {
         cart = [];
         renderCart();
         checkoutScreen?.classList.remove("active");
-        ["#checkout-name","#checkout-email","#checkout-address","#checkout-city","#checkout-pincode"].forEach(id => {const el=$(id); if(el) el.value="";});
+        ["#checkout-name","#checkout-email","#checkout-address","#checkout-city","#checkout-pincode"].forEach(id => { const field=$(id); if(field) field.value=""; });
         scrollToSection("home");
     });
 
-    /* =====================================================
-       FAVORITES
-    ===================================================== */
     function renderFavoriteCount() { if (favoritesCount) favoritesCount.textContent = favorites.length; }
-    function toggleFavorite(product) {
-        const i = favorites.findIndex(x => x.name === product.name);
-        if (i >= 0) favorites.splice(i,1); else favorites.push(product);
-        renderFavoriteCount();
-        $$(".favorite-product-btn").forEach(btn => {
-            btn.classList.toggle("active", favorites.some(x => x.name === btn.dataset.product));
-            btn.textContent = btn.classList.contains("active") ? "♥" : "♡";
+    function refreshFavoriteButtons() {
+        $$(".favorite-product-btn").forEach(button => {
+            const active = favorites.some(product => product.name === button.dataset.product);
+            button.classList.toggle("active", active);
+            button.textContent = active ? "♥" : "♡";
         });
     }
-    favoritesNav?.addEventListener("click", () => {
+    function toggleFavorite(product) {
+        if (!product) return;
+        const index = favorites.findIndex(item => item.name === product.name);
+        if (index >= 0) favorites.splice(index, 1); else favorites.push(product);
+        renderFavoriteCount();
+        refreshFavoriteButtons();
+    }
+    favoritesNav?.addEventListener("click", event => {
+        event.preventDefault(); event.stopPropagation();
         alert(favorites.length ? `You have ${favorites.length} favorite technology item(s).` : "You haven't added any favorites yet.");
     });
 
-    /* =====================================================
-       PRODUCT CARDS / MARKETPLACE
-    ===================================================== */
-    function cardHTML(product, index) {
-        return `<button type="button" class="favorite-product-btn" data-product="${product.name}" aria-label="Favorite">♡</button><div class="product-image">${product.image}</div><div class="product-content"><p class="product-category">${product.categoryName}</p><h3>${product.name}</h3><p>${product.description}</p><div class="product-bottom"><strong>${money(product.price)}</strong><div class="product-actions"><a href="#" data-view-product="${index}">View Product →</a><button type="button" class="add-to-cart-btn" data-add-product="${index}">Add to Cart</button></div></div></div>`;
+    function productForCard(card) {
+        const index = Number(card?.dataset.productIndex);
+        return Number.isInteger(index) ? products[index] : null;
     }
 
-    function decorateExistingCards() {
+    function enhanceProductCards() {
         $$(".product-card").forEach((card, index) => {
             if (!products[index]) return;
             card.dataset.productIndex = index;
+            card.dataset.category = products[index].category;
+            const image = $(".product-image", card);
             if (!card.querySelector(".favorite-product-btn")) {
-                const image = $(".product-image", card);
-                const btn = document.createElement("button");
-                btn.type = "button";
-                btn.className = "favorite-product-btn";
-                btn.dataset.product = products[index].name;
-                btn.textContent = "♡";
-                card.insertBefore(btn, image || card.firstChild);
+                const favorite = document.createElement("button");
+                favorite.type = "button";
+                favorite.className = "favorite-product-btn";
+                favorite.dataset.product = products[index].name;
+                favorite.setAttribute("aria-label", "Favorite product");
+                favorite.textContent = "♡";
+                card.insertBefore(favorite, image || card.firstChild);
             }
-            const actions = $(".product-actions", card);
-            const view = $(".product-bottom a", card);
-            if (!actions && view) {
-                const wrapper = document.createElement("div");
-                wrapper.className = "product-actions";
-                view.parentNode.insertBefore(wrapper, view);
-                wrapper.appendChild(view);
+            const bottom = $(".product-bottom", card);
+            if (!bottom) return;
+            let view = $("[data-view-product]", bottom);
+            if (!view) {
+                view = $("a", bottom) || document.createElement("a");
+                if (!view.parentElement) { view.href="#"; view.textContent="View Product →"; bottom.appendChild(view); }
+                view.dataset.viewProduct = index;
+            }
+            if (!bottom.querySelector(".product-actions")) {
+                const actions = document.createElement("div");
+                actions.className = "product-actions";
+                view.parentNode.insertBefore(actions, view);
+                actions.appendChild(view);
                 const add = document.createElement("button");
                 add.type = "button";
                 add.className = "add-to-cart-btn";
                 add.dataset.addProduct = index;
                 add.textContent = "Add to Cart";
-                wrapper.appendChild(add);
+                actions.appendChild(add);
             }
         });
-    }
-
-    function renderDynamicProduct(product, index) {
-        if (!productGrid) return;
-        const article = document.createElement("article");
-        article.className = "product-card";
-        article.dataset.category = product.category;
-        article.dataset.productIndex = index;
-        article.innerHTML = cardHTML(product,index);
-        productGrid.appendChild(article);
+        refreshFavoriteButtons();
     }
 
     function openProduct(product) {
+        if (!product || !productDetails) return;
         selectedProduct = product;
         $("#detail-image") && ($("#detail-image").textContent = product.image);
         $("#detail-category") && ($("#detail-category").textContent = product.categoryName.toUpperCase());
@@ -241,177 +274,174 @@ document.addEventListener("DOMContentLoaded", () => {
         $("#detail-description") && ($("#detail-description").textContent = product.description);
         $("#detail-creator") && ($("#detail-creator").textContent = product.creator);
         $("#detail-price") && ($("#detail-price").textContent = money(product.price));
-        if (productDetails) {
-            productDetails.style.display = "flex";
-            productDetails.classList.add("active");
-            productDetails.scrollIntoView({behavior:"smooth",block:"start"});
-        }
+        productDetails.style.display = "flex";
+        productDetails.classList.add("active");
+        requestAnimationFrame(() => {
+            const header = $("header");
+            const offset = header ? header.offsetHeight + 15 : 95;
+            const top = productDetails.getBoundingClientRect().top + window.scrollY - offset;
+            window.scrollTo({top, behavior:"smooth"});
+        });
     }
 
-    productGrid?.addEventListener("click", e => {
-        const fav = e.target.closest(".favorite-product-btn");
-        const add = e.target.closest("[data-add-product]");
-        const view = e.target.closest("[data-view-product]");
-        if (fav) { e.preventDefault(); const p=products.find(x=>x.name===fav.dataset.product); if(p) toggleFavorite(p); return; }
-        if (add) { e.preventDefault(); const p=products[Number(add.dataset.addProduct)]; if(p) addToCart(p); return; }
-        if (view) { e.preventDefault(); const p=products[Number(view.dataset.viewProduct)]; if(p) openProduct(p); }
+    productGrid?.addEventListener("click", event => {
+        const favorite = event.target.closest(".favorite-product-btn");
+        const add = event.target.closest("[data-add-product]");
+        const view = event.target.closest("[data-view-product]");
+        if (!favorite && !add && !view) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (favorite) {
+            toggleFavorite(products.find(item => item.name === favorite.dataset.product));
+            return;
+        }
+        if (add) {
+            addToCart(products[Number(add.dataset.addProduct)]);
+            return;
+        }
+        openProduct(products[Number(view.dataset.viewProduct)]);
     });
 
-    backToMarketplace?.addEventListener("click", () => {
+    backToMarketplace?.addEventListener("click", event => {
+        event.preventDefault(); event.stopPropagation();
         if (productDetails) { productDetails.classList.remove("active"); productDetails.style.display="none"; }
         scrollToSection("discover");
     });
-    getProductBtn?.addEventListener("click", () => addToCart(selectedProduct));
+    getProductBtn?.addEventListener("click", event => { event.preventDefault(); event.stopPropagation(); addToCart(selectedProduct); });
 
     function filterProducts() {
-        const q = (productSearch?.value || "").trim().toLowerCase();
+        const query = (productSearch?.value || "").trim().toLowerCase();
         $$(".product-card").forEach(card => {
-            const p = products[Number(card.dataset.productIndex)];
-            if (!p) return;
-            const matchCategory = currentCategory === "all" || p.category === currentCategory;
-            const matchSearch = !q || `${p.name} ${p.categoryName} ${p.description}`.toLowerCase().includes(q);
-            card.style.display = matchCategory && matchSearch ? "" : "none";
+            const product = productForCard(card);
+            if (!product) return;
+            const categoryMatch = currentCategory === "all" || product.category === currentCategory;
+            const searchMatch = !query || `${product.name} ${product.categoryName} ${product.description}`.toLowerCase().includes(query);
+            card.style.display = categoryMatch && searchMatch ? "" : "none";
         });
     }
     productSearch?.addEventListener("input", filterProducts);
-    filterButtons.forEach(btn => btn.addEventListener("click", () => {
-        filterButtons.forEach(x=>x.classList.remove("active"));
-        btn.classList.add("active");
-        currentCategory = btn.dataset.category || "all";
+    filterButtons.forEach(button => button.addEventListener("click", event => {
+        event.preventDefault(); event.stopPropagation();
+        filterButtons.forEach(item => item.classList.remove("active"));
+        button.classList.add("active");
+        currentCategory = button.dataset.category || "all";
         filterProducts();
     }));
 
-    /* =====================================================
-       LISTING / LIVE PREVIEW / PUBLISH
-    ===================================================== */
-    function formMessage(text) { const el=$("#form-message"); if(el) el.textContent=text; }
-    techForm?.addEventListener("submit", e => {
-        e.preventDefault();
+    function formMessage(text) { const element=$("#form-message"); if(element) element.textContent=text; }
+    function updatePreview() {
         const name=$("#tech-name")?.value.trim();
         const category=$("#tech-category")?.value;
         const description=$("#tech-description")?.value.trim();
         const price=Number($("#tech-price")?.value);
         const creator=$("#tech-creator")?.value.trim();
-        if(!name || !category || !description || !price || !creator) return formMessage("Please complete all fields.");
-        $("#preview-image").textContent=imageLabels[category]||"TECH";
-        $("#preview-category").textContent=categoryNames[category]||"TECHNOLOGY";
-        $("#preview-name").textContent=name;
-        $("#preview-description").textContent=description;
-        $("#preview-price").textContent=money(price);
-        $("#preview-creator").textContent=creator;
+        if(!name || !category || !description || !price || !creator) { formMessage("Please complete all fields."); return false; }
+        $("#preview-image") && ($("#preview-image").textContent=imageLabels[category]||"TECH");
+        $("#preview-category") && ($("#preview-category").textContent=categoryNames[category]||"TECHNOLOGY");
+        $("#preview-name") && ($("#preview-name").textContent=name);
+        $("#preview-description") && ($("#preview-description").textContent=description);
+        $("#preview-price") && ($("#preview-price").textContent=money(price));
+        $("#preview-creator") && ($("#preview-creator").textContent=creator);
         if(listingPreview) listingPreview.style.display="block";
         formMessage("Preview updated successfully.");
-        listingPreview?.scrollIntoView({behavior:"smooth",block:"center"});
+        return {name,category,description,price,creator};
+    }
+    techForm?.addEventListener("submit", event => {
+        event.preventDefault(); event.stopPropagation();
+        const data=updatePreview(); if(!data) return;
+        requestAnimationFrame(()=>listingPreview?.scrollIntoView({behavior:"smooth",block:"center"}));
     });
-
-    publishListingBtn?.addEventListener("click", () => {
-        const name=$("#tech-name")?.value.trim();
-        const category=$("#tech-category")?.value;
-        const description=$("#tech-description")?.value.trim();
-        const price=Number($("#tech-price")?.value);
-        const creator=$("#tech-creator")?.value.trim();
-        if(!name || !category || !description || !price || !creator) return alert("Please create a listing first.");
-        const product={name,category,categoryName:categoryNames[category],description,price,creator,image:imageLabels[category]};
-        products.push(product);
-        renderDynamicProduct(product,products.length-1);
-        formMessage("Listing published successfully.");
-        alert(`${name} has been published to the marketplace!`);
-        techForm?.reset();
+    publishListingBtn?.addEventListener("click", event => {
+        event.preventDefault(); event.stopPropagation();
+        const data=updatePreview(); if(!data) return;
+        const newProduct={...data,categoryName:categoryNames[data.category]||"Technology",image:imageLabels[data.category]||"TECH"};
+        products.push(newProduct);
+        renderDynamicProduct(newProduct, products.length-1);
+        enhanceProductCards();
         filterProducts();
+        formMessage("Published to the marketplace successfully.");
+        $("#tech-form")?.reset();
+        if(listingPreview) listingPreview.style.display="none";
         scrollToSection("discover");
     });
 
-    /* =====================================================
-       FIX VISIBILITY FOR DYNAMIC PANELS
-    ===================================================== */
-    const fixStyle = document.createElement("style");
-    fixStyle.textContent = `#product-details.active{display:flex!important}.favorite-product-btn{font-family:inherit}.product-card{position:relative}.listing-preview-panel{display:block}`;
-    document.head.appendChild(fixStyle);
+    function renderDynamicProduct(product,index) {
+        if(!productGrid) return;
+        const article=document.createElement("article");
+        article.className="product-card";
+        article.dataset.category=product.category;
+        article.dataset.productIndex=index;
+        article.innerHTML=`<div class="product-image">${product.image}</div><div class="product-content"><p class="product-category">${product.categoryName}</p><h3>${product.name}</h3><p>${product.description}</p><div class="product-bottom"><strong>${money(product.price)}</strong><a href="#" data-view-product="${index}">View Product →</a></div></div>`;
+        productGrid.appendChild(article);
+    }
 
-    decorateExistingCards();
+    document.addEventListener("keydown", event => {
+        if(event.key!=="Escape") return;
+        closeCartPanel();
+        checkoutScreen?.classList.remove("active");
+        if(productDetails) { productDetails.classList.remove("active"); productDetails.style.display="none"; }
+    });
+
+    moveCheckoutToBody();
+    enhanceProductCards();
     renderCart();
     renderFavoriteCount();
     filterProducts();
 
-    /* =====================================================
-       RESTORED ORIGINAL GSAP ANIMATION SYSTEM
-    ===================================================== */
-    if (typeof gsap === "undefined") {
-        console.warn("Origyn: GSAP did not load; interactions still work.");
-        return;
-    }
-    if (typeof ScrollTrigger !== "undefined") gsap.registerPlugin(ScrollTrigger);
-
-    const intro = gsap.timeline();
-    intro.from(".logo", {y:-30,opacity:0,duration:1,ease:"power3.out"})
-         .from(".nav-links a", {y:-20,opacity:0,duration:.6,stagger:.1,ease:"power3.out"},"-=.5")
-         .from("#home h1", {y:80,opacity:0,duration:1,ease:"power3.out"})
-         .from("#home p", {y:40,opacity:0,duration:.8,ease:"power3.out"});
-
-    gsap.fromTo("#explore-btn",{y:30,opacity:0},{y:0,opacity:1,duration:.8,delay:1.8,ease:"power3.out"});
-    gsap.fromTo("#sell-btn",{y:30,opacity:0},{y:0,opacity:1,duration:.8,delay:2,ease:"power3.out"});
-
-    if (typeof ScrollTrigger !== "undefined") {
-        gsap.from("#discover .section-heading",{y:100,opacity:0,duration:1,scrollTrigger:{trigger:"#discover",start:"top 80%",toggleActions:"play none none reverse"}});
-        gsap.from(".product-card",{y:100,opacity:0,duration:.8,stagger:.5,ease:"power3.out",scrollTrigger:{trigger:".product-grid",start:"top 80%",toggleActions:"play none none reverse"}});
-        gsap.from(".discover-card",{opacity:0,duration:.7,stagger:.2,ease:"power3.out",scrollTrigger:{trigger:"#discover",start:"top 70%",toggleActions:"play none none reverse"}});
-
-        /* ORIGINAL PINNED DELIVERY STORY */
-        ScrollTrigger.create({trigger:"#story",start:"top top",end:"+=2000",pin:true,anticipatePin:1});
-
-        gsap.to(".delivery-man",{x:500,scrollTrigger:{trigger:"#story",start:"top top",end:"+=2000",scrub:1}});
-        gsap.to(".delivery-box",{x:500,scrollTrigger:{trigger:"#story",start:"top top",end:"+=2000",scrub:1}});
-
-        const walking=gsap.timeline({repeat:-1,paused:true,yoyo:false});
-        walking.to(".delivery-man",{y:-8,rotation:3,duration:.25,ease:"power1.inOut"})
-               .to(".delivery-man",{y:0,rotation:-3,duration:.25,ease:"power1.inOut"});
-
-        const collision=gsap.timeline({paused:true});
-        collision.to(".delivery-man",{rotation:-8,x:"+=20",duration:.2})
-                 .to(".delivery-man",{rotation:8,x:"-=10",duration:.2})
-                 .to(".delivery-man",{rotation:-15,y:25,duration:.25});
-
-        const boxOpen=gsap.timeline({paused:true});
-        boxOpen.to(".delivery-box",{rotation:-15,scale:1.15,duration:.25,ease:"power2.out"})
-               .to(".delivery-box",{rotation:15,scale:1,duration:.25,ease:"power2.inOut"});
-
-        const techReveal=gsap.timeline({paused:true});
-        techReveal.fromTo(".tech-item",{y:40,opacity:0,scale:.8},{y:0,opacity:1,scale:1,duration:.6,stagger:.2,ease:"back.out(1.7)"});
-
-        let collided=false, opened=false, revealed=false;
-        ScrollTrigger.create({
-            trigger:"#story",start:"top top",end:"+=2000",
-            onEnter:()=>walking.play(),
-            onEnterBack:()=>{walking.play();collided=false;opened=false;revealed=false;collision.reverse();boxOpen.reverse();techReveal.reverse();},
-            onLeave:()=>walking.pause(),onLeaveBack:()=>walking.pause(),
-            onUpdate:self=>{
-                if(self.progress>.45 && !collided){collided=true;walking.pause();collision.play();}
-                if(self.progress>.70 && !opened){opened=true;boxOpen.play();}
-                if(self.progress>.82 && !revealed){revealed=true;techReveal.play();}
-            }
-        });
-
-        gsap.from(".sell-content",{x:-50,opacity:0,duration:.8,ease:"power3.out",scrollTrigger:{trigger:"#sell",start:"top 70%",toggleActions:"play none none reverse"}});
-        gsap.from(".sell-step",{opacity:0,duration:.7,stagger:.2,ease:"power3.out",scrollTrigger:{trigger:".sell-steps",start:"top 75%",toggleActions:"play none none reverse"}});
-        gsap.from(".contact-content",{y:80,opacity:0,duration:1,ease:"power3.out",scrollTrigger:{trigger:"#contact",start:"top 75%",toggleActions:"play none none reverse"}});
-
-        const aboutTimeline=gsap.timeline({scrollTrigger:{trigger:"#about",start:"top 70%",toggleActions:"play none none reverse"}});
-        aboutTimeline.from(".about-heading",{x:-70,opacity:0,duration:.8,ease:"power3.out"})
-                     .from(".about-text",{y:50,opacity:0,duration:.7,ease:"power3.out"},"-=.4")
-                     .from(".about-stat",{y:50,opacity:0,duration:.6,stagger:.2,ease:"power3.out"},"-=.3");
-
-        ScrollTrigger.refresh();
-    } else {
-        gsap.from("#home h1",{opacity:0,y:40,duration:1});
+    const header=$("header");
+    if(header) {
+        const updateHeader=()=>header.classList.toggle("scrolled",window.scrollY>40);
+        window.addEventListener("scroll",updateHeader,{passive:true});
+        updateHeader();
     }
 
-    document.addEventListener("keydown", e => {
-        if(e.key === "Escape") {
-            closeCartPanel();
-            checkoutScreen?.classList.remove("active");
-            if(productDetails){productDetails.classList.remove("active");productDetails.style.display="none";}
+    /* =========================================================
+       ORIGINAL GSAP STORY / PAGE ANIMATIONS
+    ========================================================= */
+    if(typeof gsap!=="undefined") {
+        if(typeof ScrollTrigger!=="undefined") gsap.registerPlugin(ScrollTrigger);
+        const intro=gsap.timeline();
+        intro.from(".logo",{y:-30,opacity:0,duration:0.8,ease:"power3.out"})
+            .from(".nav-links a",{y:-20,opacity:0,duration:0.45,stagger:0.07,ease:"power3.out"},"-=0.45")
+            .from("#home h1",{y:80,opacity:0,duration:0.9,ease:"power3.out"},"-=0.2")
+            .from("#home p",{y:40,opacity:0,duration:0.7,ease:"power3.out"},"-=0.5")
+            .from(".hero-buttons button",{y:25,opacity:0,duration:0.55,stagger:0.1,ease:"power3.out"},"-=0.3");
+
+        if(typeof ScrollTrigger!=="undefined") {
+            gsap.from(".product-card",{y:100,opacity:0,duration:0.8,stagger:0.15,ease:"power3.out",scrollTrigger:{trigger:".product-grid",start:"top 82%",toggleActions:"play none none reverse"}});
+            gsap.from(".delivery-man",{x:-150,opacity:0,duration:1,scrollTrigger:{trigger:"#story",start:"top 75%",toggleActions:"play none none reverse"}});
+            gsap.from(".rock",{x:80,opacity:0,duration:0.8,delay:0.2,scrollTrigger:{trigger:"#story",start:"top 75%",toggleActions:"play none none reverse"}});
+            gsap.from(".sell-content",{x:-50,opacity:0,duration:0.8,ease:"power3.out",scrollTrigger:{trigger:"#sell",start:"top 70%",toggleActions:"play none none reverse"}});
+            gsap.from(".sell-step",{opacity:0,y:30,duration:0.6,stagger:0.15,scrollTrigger:{trigger:".sell-steps",start:"top 80%",toggleActions:"play none none reverse"}});
+            gsap.from(".contact-content",{y:80,opacity:0,duration:1,ease:"power3.out",scrollTrigger:{trigger:"#contact",start:"top 75%",toggleActions:"play none none reverse"}});
+            const aboutTimeline=gsap.timeline({scrollTrigger:{trigger:"#about",start:"top 70%",toggleActions:"play none none reverse"}});
+            aboutTimeline.from(".about-heading",{x:-70,opacity:0,duration:0.8,ease:"power3.out"})
+                .from(".about-text",{y:50,opacity:0,duration:0.7,ease:"power3.out"},"-=0.4")
+                .from(".about-stat",{y:50,opacity:0,duration:0.6,stagger:0.2,ease:"power3.out"},"-=0.3");
+
+            gsap.to(".delivery-box",{x:500,scrollTrigger:{trigger:"#story",start:"top top",end:"+=2000",scrub:1}});
+            const walking=gsap.timeline({repeat:-1,paused:true});
+            walking.to(".delivery-man",{y:-8,rotation:3,duration:0.25,ease:"power1.inOut"}).to(".delivery-man",{y:0,rotation:-3,duration:0.25,ease:"power1.inOut"});
+            ScrollTrigger.create({trigger:"#story",start:"top top",end:"+=2000",onEnter:()=>walking.play(),onLeave:()=>walking.pause(),onEnterBack:()=>walking.play(),onLeaveBack:()=>walking.pause()});
+
+            const collision=gsap.timeline({paused:true});
+            collision.to(".delivery-man",{rotation:-8,x:"+=20",duration:0.2}).to(".delivery-man",{rotation:8,x:"-=10",duration:0.2}).to(".delivery-man",{rotation:-15,y:25,duration:0.25});
+            let collisionTriggered=false;
+            ScrollTrigger.create({trigger:"#story",start:"top top",end:"+=2000",onUpdate:self=>{if(self.progress>0.45&&!collisionTriggered){collisionTriggered=true;walking.pause();collision.play();}}});
+
+            const boxOpen=gsap.timeline({paused:true});
+            boxOpen.to(".delivery-box",{rotation:-15,scale:1.15,duration:0.25,ease:"power2.out"}).to(".delivery-box",{rotation:15,scale:1,duration:0.25,ease:"power2.inOut"});
+            let boxTriggered=false;
+            ScrollTrigger.create({trigger:"#story",start:"top top",end:"+=2000",onUpdate:self=>{if(self.progress>0.70&&!boxTriggered){boxTriggered=true;boxOpen.play();}}});
+
+            const techReveal=gsap.timeline({paused:true});
+            techReveal.fromTo(".tech-item",{y:40,opacity:0,scale:0.8},{y:0,opacity:1,scale:1,duration:0.6,stagger:0.2,ease:"back.out(1.7)"});
+            let revealTriggered=false;
+            ScrollTrigger.create({trigger:"#story",start:"top top",end:"+=2000",onUpdate:self=>{if(self.progress>0.82&&!revealTriggered){revealTriggered=true;techReveal.play();}}});
         }
-    });
+    } else {
+        console.warn("GSAP was not loaded.");
+    }
 
-    console.log("Origyn restored: marketplace + cart + original Story animations loaded.");
+    console.log("Origyn initialized — marketplace, cart and story animations ready.");
 });
