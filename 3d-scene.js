@@ -1,7 +1,7 @@
 /* =========================================================
    ORIGYN — PROCEDURAL THREE.JS STORY SCENE
-   Phase 1: delivery scene foundation.
-   No external 3D model files required yet.
+   Phase 1: stylized 3D delivery character upgrade.
+   Keeps the existing scroll timing and marketplace UI untouched.
 ========================================================= */
 
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.179.1/build/three.module.js";
@@ -12,7 +12,11 @@ const canvas = document.getElementById("origyn-3d-canvas");
 
 if (!root || !canvas) {
   console.warn("Origyn 3D: story canvas not found.");
+} else if (canvas.dataset.origynThreeLoaded === "true") {
+  console.warn("Origyn 3D: scene already initialized.");
 } else {
+  canvas.dataset.origynThreeLoaded = "true";
+
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -22,7 +26,6 @@ if (!root || !canvas) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
   camera.position.set(0, 3.2, 11.5);
-  camera.lookAt(0, 1.5, 0);
 
   const ambient = new THREE.HemisphereLight(0xffffff, 0xd8d8d8, 2.3);
   scene.add(ambient);
@@ -40,12 +43,12 @@ if (!root || !canvas) {
   const world = new THREE.Group();
   scene.add(world);
 
+  /* ---------- ENVIRONMENT ---------- */
   const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(30, 16),
-    new THREE.MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.92, metalness: 0 })
+    new THREE.MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.92 })
   );
   floor.rotation.x = -Math.PI / 2;
-  floor.position.y = 0;
   floor.receiveShadow = true;
   world.add(floor);
 
@@ -53,7 +56,7 @@ if (!root || !canvas) {
     new THREE.BoxGeometry(30, 0.08, 4.8),
     new THREE.MeshStandardMaterial({ color: 0x171717, roughness: 0.9 })
   );
-  road.position.set(0, 0.04, 0);
+  road.position.y = 0.04;
   road.receiveShadow = true;
   world.add(road);
 
@@ -61,58 +64,114 @@ if (!root || !canvas) {
     new THREE.BoxGeometry(30, 0.025, 0.08),
     new THREE.MeshBasicMaterial({ color: 0xffffff })
   );
-  lane.position.set(0, 0.09, 0);
+  lane.position.y = 0.09;
   world.add(lane);
 
+  /* ---------- DELIVERY CHARACTER ---------- */
   const person = new THREE.Group();
   person.position.set(-4.6, 0, 0);
   world.add(person);
 
-  const bodyMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.55 });
-  const skinMat = new THREE.MeshStandardMaterial({ color: 0xf0c7a7, roughness: 0.7 });
-  const shoeMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.75 });
+  const bodyMat = new THREE.MeshStandardMaterial({ color: 0x171717, roughness: 0.5 });
+  const accentMat = new THREE.MeshStandardMaterial({ color: 0x6c63ff, roughness: 0.35, metalness: 0.08 });
+  const skinMat = new THREE.MeshStandardMaterial({ color: 0xf0c7a7, roughness: 0.72 });
+  const shoeMat = new THREE.MeshStandardMaterial({ color: 0x303030, roughness: 0.75 });
+  const whiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.45 });
 
-  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.48, 1.15, 8, 16), bodyMat);
+  // Torso + jacket
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.5, 1.05, 8, 16), bodyMat);
   body.position.y = 2.0;
+  body.scale.set(1, 1.05, 0.8);
   body.castShadow = true;
   person.add(body);
 
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.38, 24, 18), skinMat);
+  // Shirt/brand strip
+  const chest = new THREE.Mesh(
+    new RoundedBoxGeometry(0.62, 0.38, 0.08, 4, 0.04),
+    accentMat
+  );
+  chest.position.set(0, 2.12, 0.43);
+  chest.castShadow = true;
+  person.add(chest);
+
+  // Head
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.39, 24, 18), skinMat);
   head.position.y = 3.1;
   head.castShadow = true;
   person.add(head);
 
-  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.41, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.48), bodyMat);
-  cap.position.y = 3.2;
+  // Hair/cap
+  const cap = new THREE.Mesh(
+    new THREE.SphereGeometry(0.42, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.48),
+    accentMat
+  );
+  cap.position.y = 3.22;
   cap.castShadow = true;
   person.add(cap);
 
-  const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.13, 0.72, 6, 10), bodyMat);
-  arm.position.set(0.56, 2.05, 0);
-  arm.rotation.z = -0.45;
-  arm.castShadow = true;
-  person.add(arm);
+  // Small cap visor
+  const visor = new THREE.Mesh(new RoundedBoxGeometry(0.45, 0.08, 0.25, 4, 0.03), accentMat);
+  visor.position.set(0, 3.13, 0.34);
+  visor.rotation.x = -0.12;
+  visor.castShadow = true;
+  person.add(visor);
 
+  // Eyes: gives the character a more intentional face without using textures.
+  const eyeGeo = new THREE.SphereGeometry(0.035, 10, 8);
+  const eyeL = new THREE.Mesh(eyeGeo, whiteMat);
+  const eyeR = eyeL.clone();
+  eyeL.position.set(-0.13, 3.08, 0.34);
+  eyeR.position.set(0.13, 3.08, 0.34);
+  person.add(eyeL, eyeR);
+
+  // Backpack
+  const backpack = new THREE.Mesh(
+    new RoundedBoxGeometry(0.82, 1.0, 0.32, 5, 0.08),
+    accentMat
+  );
+  backpack.position.set(0, 2.05, -0.42);
+  backpack.castShadow = true;
+  person.add(backpack);
+
+  // Arms
+  const armL = new THREE.Mesh(new THREE.CapsuleGeometry(0.13, 0.72, 6, 10), bodyMat);
+  const armR = armL.clone();
+  armL.position.set(-0.56, 2.05, 0);
+  armR.position.set(0.56, 2.05, 0);
+  armL.rotation.z = 0.45;
+  armR.rotation.z = -0.45;
+  armL.castShadow = armR.castShadow = true;
+  person.add(armL, armR);
+
+  // Hands
+  const handL = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 10), skinMat);
+  const handR = handL.clone();
+  handL.position.set(-0.83, 1.73, 0);
+  handR.position.set(0.83, 1.73, 0);
+  person.add(handL, handR);
+
+  // Legs
   const legL = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.85, 6, 10), bodyMat);
-  legL.position.set(-0.22, 0.85, 0);
-  legL.rotation.z = 0.08;
-  legL.castShadow = true;
-  person.add(legL);
-
   const legR = legL.clone();
-  legR.position.x = 0.22;
+  legL.position.set(-0.22, 0.85, 0);
+  legR.position.set(0.22, 0.85, 0);
+  legL.rotation.z = 0.08;
   legR.rotation.z = -0.08;
-  person.add(legR);
+  legL.castShadow = legR.castShadow = true;
+  person.add(legL, legR);
 
-  const shoeL = new THREE.Mesh(new RoundedBoxGeometry(0.38, 0.18, 0.62, 4, 0.06), shoeMat);
-  shoeL.position.set(-0.22, 0.23, 0.13);
-  shoeL.castShadow = true;
-  person.add(shoeL);
-
+  // Shoes
+  const shoeL = new THREE.Mesh(
+    new RoundedBoxGeometry(0.38, 0.18, 0.62, 4, 0.06),
+    shoeMat
+  );
   const shoeR = shoeL.clone();
-  shoeR.position.x = 0.22;
-  person.add(shoeR);
+  shoeL.position.set(-0.22, 0.23, 0.13);
+  shoeR.position.set(0.22, 0.23, 0.13);
+  shoeL.castShadow = shoeR.castShadow = true;
+  person.add(shoeL, shoeR);
 
+  /* ---------- PACKAGE ---------- */
   const box = new THREE.Group();
   box.position.set(-2.9, 0.65, 0);
   world.add(box);
@@ -129,6 +188,7 @@ if (!root || !canvas) {
   );
   box.add(tape);
 
+  /* ---------- OBSTACLE ---------- */
   const rock = new THREE.Mesh(
     new THREE.DodecahedronGeometry(0.58, 1),
     new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 1 })
@@ -138,6 +198,7 @@ if (!root || !canvas) {
   rock.castShadow = true;
   world.add(rock);
 
+  /* ---------- TECHNOLOGY REVEAL ---------- */
   const techGroup = new THREE.Group();
   techGroup.position.set(3.0, 1.9, 0);
   world.add(techGroup);
@@ -159,7 +220,7 @@ if (!root || !canvas) {
     techMeshes.push(card);
   });
 
-  const state = { progress: 0, target: 0, active: false };
+  const state = { progress: 0, target: 0 };
   let last = performance.now();
 
   function resize() {
@@ -188,11 +249,19 @@ if (!root || !canvas) {
     const impact = THREE.MathUtils.smoothstep(Math.max((p - 0.34) / 0.16, 0), 0, 1);
     const reveal = THREE.MathUtils.smoothstep(Math.max((p - 0.56) / 0.44, 0), 0, 1);
 
+    // Walk cycle remains tied to the original scroll progression.
     person.position.x = THREE.MathUtils.lerp(-4.6, -2.25, walk);
     const step = Math.sin(time * 0.012) * 0.13 * walk * (1 - impact);
     legL.rotation.z = 0.08 + step;
     legR.rotation.z = -0.08 - step;
-    arm.rotation.z = -0.45 - step * 1.5;
+    armL.rotation.z = 0.45 - step * 1.5;
+    armR.rotation.z = -0.45 - step * 1.5;
+    handL.position.x = -0.83 - step * 0.15;
+    handR.position.x = 0.83 + step * 0.15;
+
+    // Subtle body bounce makes the walk feel less static.
+    person.position.y = Math.sin(time * 0.024) * 0.035 * walk * (1 - impact);
+    person.rotation.z = Math.sin(time * 0.012) * 0.018 * walk;
 
     box.position.x = THREE.MathUtils.lerp(-2.9, -0.15, impact);
     box.rotation.z = THREE.MathUtils.lerp(0, -0.16, impact);
@@ -219,11 +288,6 @@ if (!root || !canvas) {
   window.addEventListener("resize", resize, { passive: true });
   window.addEventListener("scroll", updateScrollTarget, { passive: true });
 
-  const observer = new IntersectionObserver(entries => {
-    state.active = entries.some(entry => entry.isIntersecting);
-  }, { threshold: 0.01 });
-  observer.observe(root);
-
   requestAnimationFrame(animateScene);
-  console.log("Origyn 3D phase 1 loaded — procedural delivery scene ready.");
+  console.log("Origyn 3D Phase 1 loaded — stylized delivery character ready.");
 }
