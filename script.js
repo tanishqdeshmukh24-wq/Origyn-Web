@@ -1,14 +1,13 @@
 /* =========================================================
-   ORIGYN — SINGLE SOURCE OF TRUTH
-   Marketplace • Product details • Favorites • Cart • Checkout
-   Listing • Navigation • GSAP animations
+   ORIGYN — CLEAN APPLICATION SCRIPT
+   One state layer • one event layer • one animation layer
 ========================================================= */
 
 document.addEventListener("DOMContentLoaded", () => {
   "use strict";
 
-  const $ = (selector, root = document) => root.querySelector(selector);
-  const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+  const $ = (s, root = document) => root.querySelector(s);
+  const $$ = (s, root = document) => [...root.querySelectorAll(s)];
   const money = value => `₹${Number(value || 0).toLocaleString("en-IN")}`;
 
   const products = [
@@ -27,33 +26,32 @@ document.addEventListener("DOMContentLoaded", () => {
   let favorites = [];
   let selectedProduct = null;
   let currentCategory = "all";
+  let storyAnimated = false;
+  let heroAnimated = false;
 
   const header = $("header");
   const productGrid = $(".product-grid");
-  const productSearch = $("#product-search");
-  const filterButtons = $$(".filter-btn");
   const productDetails = $("#product-details");
   const cartDrawer = $("#cart-drawer");
-  const cartItems = $("#cart-items");
   const checkoutScreen = $("#checkout-screen");
-  const checkoutItems = $("#checkout-items");
-  const techForm = $("#tech-form");
   const listingPreview = $("#listing-preview");
 
-  /* ========================= NAVIGATION ========================= */
+  /* =========================================================
+     NAVIGATION
+  ========================================================= */
   function scrollToSection(id) {
     const target = document.getElementById(id);
     if (!target) return;
-    const offset = header ? header.offsetHeight + 12 : 90;
+    const offset = header ? header.offsetHeight + 15 : 90;
     const top = target.getBoundingClientRect().top + window.scrollY - offset;
     window.scrollTo({ top, behavior: "smooth" });
   }
 
   $$(".nav-links a").forEach(link => {
-    link.addEventListener("click", event => {
+    link.addEventListener("click", e => {
       const href = link.getAttribute("href");
-      if (!href || !href.startsWith("#")) return;
-      event.preventDefault();
+      if (!href?.startsWith("#")) return;
+      e.preventDefault();
       scrollToSection(href.slice(1));
     });
   });
@@ -63,17 +61,20 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#start-selling-btn")?.addEventListener("click", () => scrollToSection("submit-tech"));
 
   window.addEventListener("scroll", () => {
-    header?.classList.toggle("scrolled", window.scrollY > 40);
+    header?.classList.toggle("scrolled", window.scrollY > 30);
   }, { passive: true });
 
-  /* ============================== CART ============================== */
+  /* =========================================================
+     CART
+  ========================================================= */
   function renderCheckout() {
-    if (!checkoutItems) return;
-    checkoutItems.innerHTML = "";
+    const container = $("#checkout-items");
+    if (!container) return;
+    container.innerHTML = "";
     let total = 0;
 
     if (!cart.length) {
-      checkoutItems.innerHTML = `<p class="empty-checkout">Your cart is empty.</p>`;
+      container.innerHTML = `<p class="empty-checkout">Your cart is empty.</p>`;
     } else {
       cart.forEach(item => {
         const lineTotal = Number(item.price) * Number(item.quantity);
@@ -81,7 +82,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const row = document.createElement("div");
         row.className = "checkout-item";
         row.innerHTML = `<div><div class="checkout-item-name">${item.name}</div><div class="checkout-item-quantity">Quantity: ${item.quantity}</div></div><div class="checkout-item-price">${money(lineTotal)}</div>`;
-        checkoutItems.appendChild(row);
+        container.appendChild(row);
       });
     }
 
@@ -89,23 +90,23 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderCart() {
-    if (!cartItems) return;
-    cartItems.innerHTML = "";
+    const container = $("#cart-items");
+    if (!container) return;
+    container.innerHTML = "";
     let total = 0;
     let quantity = 0;
 
     if (!cart.length) {
-      cartItems.innerHTML = `<div class="cart-empty"><p>Your cart is empty.</p><span>Discover some technology to get started.</span></div>`;
+      container.innerHTML = `<div class="cart-empty"><p>Your cart is empty.</p><span>Discover some technology to get started.</span></div>`;
     } else {
       cart.forEach((item, index) => {
         const lineTotal = Number(item.price) * Number(item.quantity);
         total += lineTotal;
         quantity += Number(item.quantity);
-
         const row = document.createElement("div");
         row.className = "cart-item";
-        row.innerHTML = `<div class="cart-item-info"><h3>${item.name}</h3><p>${money(item.price)}</p><div class="cart-item-controls"><button type="button" data-cart-action="dec" data-index="${index}">−</button><span>${item.quantity}</span><button type="button" data-cart-action="inc" data-index="${index}">+</button></div></div><strong class="cart-item-price">${money(lineTotal)}</strong><button class="cart-remove" type="button" data-cart-action="remove" data-index="${index}" aria-label="Remove item">×</button>`;
-        cartItems.appendChild(row);
+        row.innerHTML = `<div class="cart-item-info"><h3>${item.name}</h3><p>${money(item.price)}</p><div class="cart-item-controls"><button type="button" data-cart-action="dec" data-index="${index}">−</button><span>${item.quantity}</span><button type="button" data-cart-action="inc" data-index="${index}">+</button></div></div><strong class="cart-item-price">${money(lineTotal)}</strong><button class="cart-remove" type="button" data-cart-action="remove" data-index="${index}">×</button>`;
+        container.appendChild(row);
       });
     }
 
@@ -139,65 +140,63 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#cart-nav")?.addEventListener("click", openCart);
   $("#close-cart")?.addEventListener("click", closeCart);
 
-  cartItems?.addEventListener("click", event => {
-    const button = event.target.closest("[data-cart-action]");
+  $("#cart-items")?.addEventListener("click", e => {
+    const button = e.target.closest("[data-cart-action]");
     if (!button) return;
-    event.preventDefault();
-    event.stopPropagation();
-
+    e.preventDefault();
+    e.stopPropagation();
     const index = Number(button.dataset.index);
     const item = cart[index];
     if (!item) return;
-
     if (button.dataset.cartAction === "inc") item.quantity += 1;
     if (button.dataset.cartAction === "dec") item.quantity -= 1;
     if (button.dataset.cartAction === "remove" || item.quantity <= 0) cart.splice(index, 1);
     renderCart();
   });
 
-  $("#checkout-btn")?.addEventListener("click", event => {
-    event.preventDefault();
+  $("#checkout-btn")?.addEventListener("click", e => {
+    e.preventDefault();
     if (!cart.length) return alert("Your cart is empty.");
     renderCheckout();
     closeCart();
     checkoutScreen?.classList.add("active");
     checkoutScreen?.setAttribute("aria-hidden", "false");
-    window.scrollTo({ top: 0, behavior: "instant" });
+    window.scrollTo({ top: 0, behavior: "auto" });
   });
 
-  $("#back-to-cart")?.addEventListener("click", event => {
-    event.preventDefault();
+  $("#back-to-cart")?.addEventListener("click", e => {
+    e.preventDefault();
     checkoutScreen?.classList.remove("active");
     checkoutScreen?.setAttribute("aria-hidden", "true");
     openCart();
   });
 
-  $("#place-order-btn")?.addEventListener("click", event => {
-    event.preventDefault();
+  $("#place-order-btn")?.addEventListener("click", e => {
+    e.preventDefault();
     const name = $("#checkout-name")?.value.trim();
     const email = $("#checkout-email")?.value.trim();
     const address = $("#checkout-address")?.value.trim();
     const city = $("#checkout-city")?.value.trim();
     const pin = $("#checkout-pincode")?.value.trim();
-
     if (!name || !email || !address || !city || !/^\d{6}$/.test(pin || "")) {
       alert("Please complete all delivery details and enter a valid 6-digit PIN code.");
       return;
     }
-
     alert(`Order placed successfully!\n\nThank you, ${name}!`);
     cart = [];
     renderCart();
     checkoutScreen?.classList.remove("active");
     checkoutScreen?.setAttribute("aria-hidden", "true");
-    ["#checkout-name", "#checkout-email", "#checkout-address", "#checkout-city", "#checkout-pincode"].forEach(id => {
-      const field = $(id);
+    ["checkout-name", "checkout-email", "checkout-address", "checkout-city", "checkout-pincode"].forEach(id => {
+      const field = document.getElementById(id);
       if (field) field.value = "";
     });
     scrollToSection("home");
   });
 
-  /* ============================ FAVORITES ============================ */
+  /* =========================================================
+     FAVORITES
+  ========================================================= */
   function refreshFavoriteButtons() {
     $$(".favorite-product-btn").forEach(button => {
       const active = favorites.some(item => item.name === button.dataset.product);
@@ -215,109 +214,102 @@ document.addEventListener("DOMContentLoaded", () => {
     refreshFavoriteButtons();
   }
 
-  $("#favorites-nav")?.addEventListener("click", event => {
-    event.preventDefault();
+  $("#favorites-nav")?.addEventListener("click", e => {
+    e.preventDefault();
     alert(favorites.length ? `You have ${favorites.length} favorite technology item(s).` : "You haven't added any favorites yet.");
   });
 
-  /* ============================= PRODUCTS ============================= */
+  /* =========================================================
+     MARKETPLACE
+  ========================================================= */
   function decorateProductCard(card, index) {
     const product = products[index];
-    if (!product || !card) return;
+    if (!card || !product) return;
     card.dataset.productIndex = index;
     card.dataset.category = product.category;
-
     if (!card.querySelector(".favorite-product-btn")) {
-      const favorite = document.createElement("button");
-      favorite.type = "button";
-      favorite.className = "favorite-product-btn";
-      favorite.dataset.product = product.name;
-      favorite.setAttribute("aria-label", `Favorite ${product.name}`);
-      favorite.textContent = "♡";
-      card.querySelector(".product-image")?.before(favorite);
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "favorite-product-btn";
+      button.dataset.product = product.name;
+      button.textContent = "♡";
+      button.setAttribute("aria-label", `Favorite ${product.name}`);
+      card.querySelector(".product-image")?.before(button);
     }
   }
 
   $$(".product-card").forEach(decorateProductCard);
   refreshFavoriteButtons();
 
-  productGrid?.addEventListener("click", event => {
-    const favorite = event.target.closest(".favorite-product-btn");
-    const add = event.target.closest("[data-add-product]");
-    const view = event.target.closest("[data-view-product]");
-
-    if (!favorite && !add && !view) return;
-    event.preventDefault();
-    event.stopPropagation();
-
-    if (favorite) {
-      toggleFavorite(products.find(product => product.name === favorite.dataset.product));
-      return;
-    }
-    if (add) {
-      addToCart(products[Number(add.dataset.addProduct)]);
-      return;
-    }
-    if (view) openProduct(products[Number(view.dataset.viewProduct)]);
-  });
-
   function openProduct(product) {
     if (!product || !productDetails) return;
     selectedProduct = product;
-
     $("#detail-image").textContent = product.image;
     $("#detail-category").textContent = product.categoryName.toUpperCase();
     $("#detail-name").textContent = product.name;
     $("#detail-description").textContent = product.description;
     $("#detail-creator").textContent = product.creator;
     $("#detail-price").textContent = money(product.price);
-
     productDetails.classList.add("active");
-    requestAnimationFrame(() => scrollToSection("product-details"));
+    setTimeout(() => scrollToSection("product-details"), 20);
   }
 
-  $("#back-to-marketplace")?.addEventListener("click", event => {
-    event.preventDefault();
+  productGrid?.addEventListener("click", e => {
+    const favorite = e.target.closest(".favorite-product-btn");
+    const add = e.target.closest("[data-add-product]");
+    const view = e.target.closest("[data-view-product]");
+    if (!favorite && !add && !view) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (favorite) return toggleFavorite(products.find(p => p.name === favorite.dataset.product));
+    if (add) return addToCart(products[Number(add.dataset.addProduct)]);
+    if (view) return openProduct(products[Number(view.dataset.viewProduct)]);
+  });
+
+  $("#back-to-marketplace")?.addEventListener("click", e => {
+    e.preventDefault();
     productDetails?.classList.remove("active");
     scrollToSection("discover");
   });
 
-  $("#get-product-btn")?.addEventListener("click", event => {
-    event.preventDefault();
+  $("#get-product-btn")?.addEventListener("click", e => {
+    e.preventDefault();
     addToCart(selectedProduct);
   });
 
   function filterProducts() {
-    const query = (productSearch?.value || "").trim().toLowerCase();
+    const query = ($( "#product-search")?.value || "").trim().toLowerCase();
     $$(".product-card").forEach(card => {
       const product = products[Number(card.dataset.productIndex)];
       if (!product) return;
       const categoryMatch = currentCategory === "all" || product.category === currentCategory;
-      const searchMatch = !query || `${product.name} ${product.categoryName} ${product.description}`.toLowerCase().includes(query);
-      card.classList.toggle("hidden", !(categoryMatch && searchMatch));
+      const text = `${product.name} ${product.categoryName} ${product.description}`.toLowerCase();
+      card.classList.toggle("hidden", !(categoryMatch && (!query || text.includes(query))));
     });
   }
 
-  productSearch?.addEventListener("input", filterProducts);
-  filterButtons.forEach(button => {
-    button.addEventListener("click", event => {
-      event.preventDefault();
-      filterButtons.forEach(item => item.classList.remove("active"));
+  $("#product-search")?.addEventListener("input", filterProducts);
+  $$(".filter-btn").forEach(button => {
+    button.addEventListener("click", e => {
+      e.preventDefault();
+      $$(".filter-btn").forEach(b => b.classList.remove("active"));
       button.classList.add("active");
       currentCategory = button.dataset.category || "all";
       filterProducts();
     });
   });
 
-  /* =========================== LISTING =========================== */
-  function getListingData() {
+  /* =========================================================
+     LISTING
+  ========================================================= */
+  function readListing() {
     const name = $("#tech-name")?.value.trim();
     const category = $("#tech-category")?.value;
     const description = $("#tech-description")?.value.trim();
-    const price = Number($("#tech-price")?.value);
+    const priceRaw = $("#tech-price")?.value;
     const creator = $("#tech-creator")?.value.trim();
-
-    if (!name || !category || !description || !price || price < 0 || !creator) {
+    const price = Number(priceRaw);
+    if (!name || !category || !description || priceRaw === "" || price < 0 || !creator) {
       $("#form-message").textContent = "Please complete all fields.";
       return null;
     }
@@ -325,9 +317,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function updatePreview() {
-    const data = getListingData();
+    const data = readListing();
     if (!data) return null;
-
     $("#preview-image").textContent = imageLabels[data.category] || "TECH";
     $("#preview-category").textContent = categoryNames[data.category] || "TECHNOLOGY";
     $("#preview-name").textContent = data.name;
@@ -339,34 +330,26 @@ document.addEventListener("DOMContentLoaded", () => {
     return data;
   }
 
-  techForm?.addEventListener("submit", event => {
-    event.preventDefault();
-    event.stopPropagation();
-    const data = updatePreview();
-    if (data) listingPreview?.scrollIntoView({ behavior: "smooth", block: "center" });
+  $("#tech-form")?.addEventListener("submit", e => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (updatePreview()) listingPreview?.scrollIntoView({ behavior: "smooth", block: "center" });
   });
 
-  $("#publish-listing-btn")?.addEventListener("click", event => {
-    event.preventDefault();
-    event.stopPropagation();
+  $("#publish-listing-btn")?.addEventListener("click", e => {
+    e.preventDefault();
+    e.stopPropagation();
     const data = updatePreview();
     if (!data) return;
-
-    const product = {
-      ...data,
-      categoryName: categoryNames[data.category] || "Technology",
-      image: imageLabels[data.category] || "TECH"
-    };
-
+    const product = { ...data, categoryName: categoryNames[data.category] || "Technology", image: imageLabels[data.category] || "TECH" };
     products.push(product);
     const index = products.length - 1;
     renderDynamicProduct(product, index);
     decorateProductCard(productGrid.lastElementChild, index);
-    filterProducts();
     refreshFavoriteButtons();
-
+    filterProducts();
     $("#form-message").textContent = "Published to the marketplace successfully.";
-    techForm.reset();
+    $("#tech-form").reset();
     listingPreview.style.display = "none";
     scrollToSection("discover");
   });
@@ -375,129 +358,126 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!productGrid) return;
     const article = document.createElement("article");
     article.className = "product-card";
-    article.dataset.productIndex = index;
-    article.dataset.category = product.category;
     article.innerHTML = `<div class="product-image">${product.image}</div><div class="product-content"><p class="product-category">${product.categoryName}</p><h3>${product.name}</h3><p>${product.description}</p><div class="product-bottom"><strong>${money(product.price)}</strong><div class="product-actions"><a href="#product-details" data-view-product="${index}">View Product →</a><button type="button" class="add-to-cart-btn" data-add-product="${index}">Add to Cart</button></div></div></div>`;
     productGrid.appendChild(article);
   }
 
-  /* ========================== KEYBOARD ========================== */
-  document.addEventListener("keydown", event => {
-    if (event.key !== "Escape") return;
+  /* =========================================================
+     KEYBOARD
+  ========================================================= */
+  document.addEventListener("keydown", e => {
+    if (e.key !== "Escape") return;
     closeCart();
     checkoutScreen?.classList.remove("active");
     productDetails?.classList.remove("active");
   });
 
-  renderCart();
-  filterProducts();
-
-  /* ===============================================================
-     GSAP — ONE ANIMATION SYSTEM ONLY
-     The delivery scene has ONE timeline and ONE ScrollTrigger.
-  =============================================================== */
+  /* =========================================================
+     ANIMATIONS
+     No pinning. No duplicate timelines. No autoAlpha on buttons.
+  ========================================================= */
   function initAnimations() {
-    if (typeof gsap === "undefined" || typeof ScrollTrigger === "undefined") {
-      console.warn("Origyn: GSAP/ScrollTrigger unavailable. Static UI remains usable.");
-      return;
-    }
+    if (heroAnimated) return;
+    heroAnimated = true;
 
+    /* Defensive visibility: UI controls can never remain hidden. */
+    gsap?.set?.("header, .nav-links, .nav-links a, .nav-links button, .hero-buttons, .hero-buttons button", { clearProps: "opacity,visibility,transform" });
+
+    if (typeof gsap === "undefined" || typeof ScrollTrigger === "undefined") return;
     gsap.registerPlugin(ScrollTrigger);
 
-    /* Navigation and hero controls are never left hidden. */
-    gsap.set("header, .nav-links, .nav-links a, .nav-links button, .hero-buttons, .hero-buttons button", { autoAlpha: 1 });
-
-    /* HERO */
+    /* HERO: only text animates. Buttons stay visible and clickable. */
     gsap.timeline({ defaults: { ease: "power3.out" } })
-      .from(".logo", { y: -20, autoAlpha: 0, duration: 0.55 })
-      .from(".nav-links a, .nav-links button", { y: -12, autoAlpha: 0, duration: 0.3, stagger: 0.045 }, "-=0.25")
-      .from("#home h1", { y: 55, autoAlpha: 0, duration: 0.7 }, "-=0.1")
-      .from("#home p", { y: 25, autoAlpha: 0, duration: 0.45 }, "-=0.35")
-      .from(".hero-buttons button", { y: 20, autoAlpha: 0, duration: 0.4, stagger: 0.08 }, "-=0.2");
+      .from(".logo", { y: -18, autoAlpha: 0, duration: 0.5 })
+      .from("#home h1", { y: 45, autoAlpha: 0, duration: 0.65 }, "-=0.2")
+      .from("#home > p", { y: 22, autoAlpha: 0, duration: 0.4 }, "-=0.25");
 
-    /* MARKETPLACE */
+    /* Buttons are explicitly made visible after the intro. */
+    gsap.set(".hero-buttons, .hero-buttons button", { autoAlpha: 1, clearProps: "transform" });
+
     gsap.from(".product-card", {
-      y: 55,
-      autoAlpha: 0,
-      duration: 0.65,
-      stagger: 0.1,
-      ease: "power3.out",
-      scrollTrigger: { trigger: "#discover", start: "top 78%", once: true }
+      y: 40, autoAlpha: 0, duration: 0.55, stagger: 0.08, ease: "power3.out",
+      scrollTrigger: { trigger: "#discover", start: "top 80%", once: true }
     });
 
-    /* OTHER SECTIONS */
     gsap.from(".sell-content", {
-      x: -50, autoAlpha: 0, duration: 0.75, ease: "power3.out",
-      scrollTrigger: { trigger: "#sell", start: "top 75%", once: true }
+      x: -45, autoAlpha: 0, duration: 0.65,
+      scrollTrigger: { trigger: "#sell", start: "top 78%", once: true }
     });
+
     gsap.from(".sell-step", {
-      y: 35, autoAlpha: 0, duration: 0.55, stagger: 0.12, ease: "power3.out",
+      y: 30, autoAlpha: 0, duration: 0.5, stagger: 0.1,
       scrollTrigger: { trigger: ".sell-steps", start: "top 82%", once: true }
     });
+
     gsap.from(".about-heading", {
-      x: -50, autoAlpha: 0, duration: 0.7,
-      scrollTrigger: { trigger: "#about", start: "top 75%", once: true }
-    });
-    gsap.from(".about-text", {
-      y: 35, autoAlpha: 0, duration: 0.6,
-      scrollTrigger: { trigger: ".about-text", start: "top 82%", once: true }
-    });
-    gsap.from(".about-stat", {
-      y: 35, autoAlpha: 0, duration: 0.55, stagger: 0.12,
-      scrollTrigger: { trigger: ".about-stats", start: "top 82%", once: true }
-    });
-    gsap.from(".contact-content", {
-      y: 50, autoAlpha: 0, duration: 0.75,
-      scrollTrigger: { trigger: "#contact", start: "top 78%", once: true }
+      x: -45, autoAlpha: 0, duration: 0.65,
+      scrollTrigger: { trigger: "#about", start: "top 78%", once: true }
     });
 
-    /* STORY — SINGLE TIMELINE, SINGLE TRIGGER. */
+    gsap.from(".about-text", {
+      y: 30, autoAlpha: 0, duration: 0.55,
+      scrollTrigger: { trigger: ".about-text", start: "top 82%", once: true }
+    });
+
+    gsap.from(".about-stat", {
+      y: 30, autoAlpha: 0, duration: 0.5, stagger: 0.1,
+      scrollTrigger: { trigger: ".about-stats", start: "top 82%", once: true }
+    });
+
+    gsap.from(".contact-content", {
+      y: 35, autoAlpha: 0, duration: 0.65,
+      scrollTrigger: { trigger: "#contact", start: "top 80%", once: true }
+    });
+
+    /* STORY: one entrance trigger, one timeline, one execution. */
     const story = $("#story");
     const man = $(".delivery-man");
     const box = $(".delivery-box");
     const rock = $(".rock");
     const tech = $$(".tech-item");
 
-    if (story && man && box && rock && tech.length) {
-      gsap.set(man, { x: -160, y: 0, rotation: 0, autoAlpha: 1 });
-      gsap.set(box, { x: 0, y: 0, rotation: 0, scale: 1, autoAlpha: 1 });
-      gsap.set(rock, { x: 90, autoAlpha: 1 });
-      gsap.set(tech, { y: 55, scale: 0.72, autoAlpha: 0 });
+    if (!story || !man || !box || !rock || tech.length || storyAnimated) {
+      // handled below when all story elements exist
+    }
 
-      const storyTimeline = gsap.timeline({
-        scrollTrigger: {
-          trigger: story,
-          start: "top top",
-          end: "+=1800",
-          scrub: 0.8,
-          pin: true,
-          anticipatePin: 1,
-          invalidateOnRefresh: true
-        }
+    if (story && man && box && rock && tech.length && !storyAnimated) {
+      storyAnimated = true;
+      gsap.set(man, { x: -140, y: 0, rotation: 0, autoAlpha: 1 });
+      gsap.set(box, { x: 0, y: 0, rotation: 0, scale: 1, autoAlpha: 1 });
+      gsap.set(rock, { x: 0, autoAlpha: 1 });
+      gsap.set(tech, { y: 35, scale: 0.82, autoAlpha: 0 });
+
+      const tl = gsap.timeline({
+        paused: true,
+        defaults: { overwrite: "auto" },
+        onComplete: () => { story.dataset.animationComplete = "true"; }
       });
 
-      /* 1. Walk */
-      storyTimeline.to(man, { x: 0, duration: 2.2, ease: "power1.inOut" });
+      tl.to(man, { x: 0, duration: 1.25, ease: "power1.inOut" })
+        .to(man, { x: 15, rotation: -8, duration: 0.12, ease: "power2.out" })
+        .to(man, { x: 2, y: 12, rotation: 7, duration: 0.12, ease: "power2.inOut" })
+        .to(man, { x: 0, y: 0, rotation: 0, duration: 0.18, ease: "back.out(1.5)" })
+        .to(box, { x: 260, rotation: -10, scale: 1.08, duration: 0.55, ease: "power2.inOut" }, "-=0.05")
+        .to(box, { rotation: 5, duration: 0.16 })
+        .to(box, { rotation: 0, scale: 1, duration: 0.12 })
+        .to(tech, { y: 0, scale: 1, autoAlpha: 1, duration: 0.38, stagger: 0.16, ease: "back.out(1.6)" }, ">0.08");
 
-      /* 2. Collision — once */
-      storyTimeline.to(man, { x: 18, rotation: -9, duration: 0.18, ease: "power2.out" });
-      storyTimeline.to(man, { x: 5, y: 14, rotation: 8, duration: 0.18, ease: "power2.inOut" });
-      storyTimeline.to(man, { x: 0, y: 0, rotation: 0, duration: 0.3, ease: "back.out(1.4)" });
-
-      /* 3. Box reaction — once */
-      storyTimeline.to(box, { x: 330, rotation: -12, scale: 1.1, duration: 0.8, ease: "power2.inOut" }, ">+0.12");
-      storyTimeline.to(box, { rotation: 10, scale: 1, duration: 0.25, ease: "power2.inOut" });
-      storyTimeline.to(box, { rotation: 0, duration: 0.15 });
-
-      /* 4. Technology reveal — once */
-      storyTimeline.to(tech, { y: 0, autoAlpha: 1, scale: 1, duration: 0.45, stagger: 0.28, ease: "back.out(1.6)" }, ">+0.12");
+      ScrollTrigger.create({
+        trigger: story,
+        start: "top 72%",
+        once: true,
+        onEnter: () => tl.play()
+      });
     }
 
     ScrollTrigger.refresh();
   }
 
+  renderCart();
+  filterProducts();
+  window.addEventListener("load", initAnimations, { once: true });
   if (document.readyState === "complete") initAnimations();
-  else window.addEventListener("load", initAnimations, { once: true });
 
-  console.log("Origyn ready — one script, one animation system, stable navigation.");
+  console.log("Origyn initialized — clean state, navigation, marketplace, cart and animations.");
 });
