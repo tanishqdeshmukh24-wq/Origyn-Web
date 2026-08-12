@@ -33,3 +33,25 @@
     min-height: 440px;
   }
 }
+
+/* =========================================================
+   MARKETPLACE — VISUAL ALIGNMENT ONLY
+   Keeps cards in each grid row visually level.
+   No product, cart, favorite, or navigation functionality is changed.
+========================================================= */
+
+.product-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.product-card .product-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.product-card .product-bottom {
+  margin-top: auto;
+}
