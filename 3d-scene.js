@@ -1,9 +1,13 @@
 /* =========================================================
    ORIGYN — PROCEDURAL THREE.JS STORY SCENE
-   Phase 1: stylized 3D delivery character.
+   Isolated 3D story layer. Marketplace/cart/checkout code is untouched.
 ========================================================= */
 
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.179.1/build/three.module.js";
+/*
+  This file intentionally uses the classic Three.js build instead of an
+  ES-module import. That keeps the scene reliable when Origyn is opened
+  directly from VS Code/Live Server and avoids browser module/CORS issues.
+*/
 
 const root = document.querySelector(".delivery-scene");
 const canvas = document.getElementById("origyn-3d-canvas");
@@ -12,8 +16,11 @@ if (!root || !canvas) {
   console.warn("Origyn 3D: story canvas not found.");
 } else if (canvas.dataset.origynThreeLoaded === "true") {
   console.warn("Origyn 3D: scene already initialized.");
+} else if (!window.THREE) {
+  console.error("Origyn 3D: Three.js failed to load.");
 } else {
   canvas.dataset.origynThreeLoaded = "true";
+  const THREE = window.THREE;
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -40,20 +47,31 @@ if (!root || !canvas) {
   const world = new THREE.Group();
   scene.add(world);
 
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 16), new THREE.MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.92 }));
+  // Environment
+  const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(30, 16),
+    new THREE.MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.92 })
+  );
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
   world.add(floor);
 
-  const road = new THREE.Mesh(new THREE.BoxGeometry(30, 0.08, 4.8), new THREE.MeshStandardMaterial({ color: 0x171717, roughness: 0.9 }));
+  const road = new THREE.Mesh(
+    new THREE.BoxGeometry(30, 0.08, 4.8),
+    new THREE.MeshStandardMaterial({ color: 0x171717, roughness: 0.9 })
+  );
   road.position.y = 0.04;
   road.receiveShadow = true;
   world.add(road);
 
-  const lane = new THREE.Mesh(new THREE.BoxGeometry(30, 0.025, 0.08), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+  const lane = new THREE.Mesh(
+    new THREE.BoxGeometry(30, 0.025, 0.08),
+    new THREE.MeshBasicMaterial({ color: 0xffffff })
+  );
   lane.position.y = 0.09;
   world.add(lane);
 
+  // Delivery character
   const person = new THREE.Group();
   person.position.set(-4.6, 0, 0);
   world.add(person);
@@ -79,7 +97,10 @@ if (!root || !canvas) {
   head.castShadow = true;
   person.add(head);
 
-  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.42, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.48), accentMat);
+  const cap = new THREE.Mesh(
+    new THREE.SphereGeometry(0.42, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.48),
+    accentMat
+  );
   cap.position.y = 3.22;
   person.add(cap);
 
@@ -118,8 +139,6 @@ if (!root || !canvas) {
   const legR = legL.clone();
   legL.position.set(-0.22, 0.85, 0);
   legR.position.set(0.22, 0.85, 0);
-  legL.rotation.z = 0.08;
-  legR.rotation.z = -0.08;
   person.add(legL, legR);
 
   const shoeL = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.18, 0.62), shoeMat);
@@ -128,34 +147,82 @@ if (!root || !canvas) {
   shoeR.position.set(0.22, 0.23, 0.13);
   person.add(shoeL, shoeR);
 
+  // Parcel
   const box = new THREE.Group();
-  box.position.set(-2.9, 0.65, 0);
+  box.position.set(-3.0, 0.65, 0);
   world.add(box);
+
   const boxMat = new THREE.MeshStandardMaterial({ color: 0xb8783f, roughness: 0.78 });
   const parcel = new THREE.Mesh(new THREE.BoxGeometry(1.25, 1.05, 1.25), boxMat);
   parcel.castShadow = true;
   parcel.receiveShadow = true;
   box.add(parcel);
-  const tape = new THREE.Mesh(new THREE.BoxGeometry(0.18, 1.08, 1.28), new THREE.MeshStandardMaterial({ color: 0xe6d7b5, roughness: 0.6 }));
+
+  const tape = new THREE.Mesh(
+    new THREE.BoxGeometry(0.18, 1.08, 1.28),
+    new THREE.MeshStandardMaterial({ color: 0xe6d7b5, roughness: 0.6 })
+  );
   box.add(tape);
 
-  const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.58, 1), new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 1 }));
-  rock.position.set(1.1, 0.55, 0);
+  // Rock obstacle
+  const rock = new THREE.Mesh(
+    new THREE.DodecahedronGeometry(0.58, 1),
+    new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 1 })
+  );
+  rock.position.set(1.0, 0.55, 0);
   rock.scale.set(1.2, 0.8, 0.9);
   rock.castShadow = true;
   world.add(rock);
 
+  // Technology reveal cards
   const techGroup = new THREE.Group();
   techGroup.position.set(3.0, 1.9, 0);
   world.add(techGroup);
+
   const techColors = [0x6c63ff, 0x111111, 0x3b82f6];
   const techMeshes = [];
 
+  function makeLabelTexture(text) {
+    const labelCanvas = document.createElement("canvas");
+    labelCanvas.width = 256;
+    labelCanvas.height = 256;
+    const ctx = labelCanvas.getContext("2d");
+    ctx.clearRect(0, 0, 256, 256);
+    ctx.fillStyle = "rgba(255,255,255,0.96)";
+    ctx.font = "800 54px Inter, Arial, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, 128, 128);
+    const texture = new THREE.CanvasTexture(labelCanvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    return texture;
+  }
+
   ["AI", "WEB", "IoT"].forEach((label, i) => {
-    const card = new THREE.Mesh(new THREE.BoxGeometry(1.25, 1.25, 0.18), new THREE.MeshStandardMaterial({ color: techColors[i], roughness: 0.35, metalness: 0.12 }));
+    const card = new THREE.Mesh(
+      new THREE.BoxGeometry(1.25, 1.25, 0.18),
+      new THREE.MeshStandardMaterial({
+        color: techColors[i],
+        roughness: 0.35,
+        metalness: 0.12
+      })
+    );
     card.position.set((i - 1) * 1.45, i === 1 ? 0.15 : 0, 0);
     card.rotation.z = (i - 1) * 0.08;
     card.scale.setScalar(0.001);
+    card.castShadow = true;
+
+    const labelMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.95, 0.95),
+      new THREE.MeshBasicMaterial({
+        map: makeLabelTexture(label),
+        transparent: true,
+        depthWrite: false
+      })
+    );
+    labelMesh.position.z = 0.101;
+    card.add(labelMesh);
+
     techGroup.add(card);
     techMeshes.push(card);
   });
@@ -171,13 +238,11 @@ if (!root || !canvas) {
     camera.updateProjectionMatrix();
   }
 
-  /* Map the story animation to the actual story section instead of the
-     previous viewport formula, which started the sequence halfway through. */
   function updateScrollTarget() {
     const rect = root.getBoundingClientRect();
-    const viewport = window.innerHeight;
-    const start = viewport * 0.82;
-    const end = -root.offsetHeight + viewport * 0.18;
+    const viewport = window.innerHeight || 1;
+    const start = viewport * 0.9;
+    const end = -root.offsetHeight + viewport * 0.1;
     const span = Math.max(start - end, 1);
     state.target = THREE.MathUtils.clamp((start - rect.top) / span, 0, 1);
   }
@@ -185,28 +250,42 @@ if (!root || !canvas) {
   function animateScene(time) {
     const dt = Math.min((time - last) / 1000, 0.05);
     last = time;
-    state.progress = THREE.MathUtils.damp(state.progress, state.target, 5.5, dt);
+    state.progress = THREE.MathUtils.damp(state.progress, state.target, 7, dt);
 
     const p = state.progress;
-    const walk = THREE.MathUtils.smoothstep(Math.min(p / 0.38, 1), 0, 1);
-    const impact = THREE.MathUtils.smoothstep(Math.max((p - 0.34) / 0.16, 0), 0, 1);
-    const reveal = THREE.MathUtils.smoothstep(Math.max((p - 0.56) / 0.44, 0), 0, 1);
+    const walk = THREE.MathUtils.smoothstep(THREE.MathUtils.clamp(p / 0.38, 0, 1), 0, 1);
+    const stumble = THREE.MathUtils.smoothstep(THREE.MathUtils.clamp((p - 0.34) / 0.18, 0, 1), 0, 1);
+    const recover = THREE.MathUtils.smoothstep(THREE.MathUtils.clamp((p - 0.5) / 0.16, 0, 1), 0, 1);
+    const reveal = THREE.MathUtils.smoothstep(THREE.MathUtils.clamp((p - 0.58) / 0.42, 0, 1), 0, 1);
 
-    person.position.x = THREE.MathUtils.lerp(-4.6, -2.25, walk);
-    const step = Math.sin(time * 0.012) * 0.13 * walk * (1 - impact);
+    // Walk toward the obstacle.
+    person.position.x = THREE.MathUtils.lerp(-4.6, 0.05, walk);
+
+    const step = Math.sin(time * 0.012) * 0.18 * walk * (1 - stumble);
     legL.rotation.z = 0.08 + step;
     legR.rotation.z = -0.08 - step;
     armL.rotation.z = 0.45 - step * 1.5;
     armR.rotation.z = -0.45 - step * 1.5;
     handL.position.x = -0.83 - step * 0.15;
     handR.position.x = 0.83 + step * 0.15;
-    person.position.y = Math.sin(time * 0.024) * 0.035 * walk * (1 - impact);
-    person.rotation.z = Math.sin(time * 0.012) * 0.018 * walk;
 
-    box.position.x = THREE.MathUtils.lerp(-2.9, -0.15, impact);
-    box.rotation.z = THREE.MathUtils.lerp(0, -0.16, impact);
-    rock.rotation.y += dt * 0.25;
+    // A visible stumble at the rock, followed by recovery.
+    const stumbleAmount = stumble * (1 - recover * 0.8);
+    person.position.y = Math.sin(time * 0.024) * 0.04 * walk * (1 - stumble);
+    person.rotation.z = THREE.MathUtils.lerp(0, -0.22, stumbleAmount);
+    person.rotation.x = THREE.MathUtils.lerp(0, 0.08, stumbleAmount);
 
+    // Parcel starts with the character and drops forward during the stumble.
+    const carryX = person.position.x - 0.85;
+    const dropX = THREE.MathUtils.lerp(carryX, -0.15, stumble);
+    box.position.x = dropX;
+    box.position.y = THREE.MathUtils.lerp(1.55, 0.65, stumble);
+    box.rotation.z = THREE.MathUtils.lerp(0, -0.2, stumble);
+
+    rock.rotation.y += dt * 0.45;
+    rock.rotation.z = Math.sin(time * 0.0015) * 0.04;
+
+    // Technology rises after the obstacle moment.
     techMeshes.forEach((mesh, i) => {
       const local = THREE.MathUtils.clamp((reveal - i * 0.13) / 0.45, 0, 1);
       const eased = THREE.MathUtils.smoothstep(local, 0, 1);
@@ -217,7 +296,7 @@ if (!root || !canvas) {
 
     camera.position.x = THREE.MathUtils.lerp(0, 0.35, reveal);
     camera.position.y = THREE.MathUtils.lerp(3.2, 3.45, reveal);
-    camera.lookAt(0, 1.55, 0);
+    camera.lookAt(0.2, 1.55, 0);
 
     renderer.render(scene, camera);
     requestAnimationFrame(animateScene);
