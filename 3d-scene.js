@@ -1,11 +1,11 @@
 /* =========================================================
    ORIGYN — PROCEDURAL THREE.JS STORY SCENE
-   Phase 1: stylized 3D delivery character upgrade.
-   Keeps the existing scroll timing and marketplace UI untouched.
+   Phase 1: stylized 3D delivery character.
+   No external Three.js example modules are used so the scene
+   can load reliably in the browser.
 ========================================================= */
 
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.179.1/build/three.module.js";
-import { RoundedBoxGeometry } from "https://cdn.jsdelivr.net/npm/three@0.179.1/examples/jsm/geometries/RoundedBoxGeometry.js";
 
 const root = document.querySelector(".delivery-scene");
 const canvas = document.getElementById("origyn-3d-canvas");
@@ -18,7 +18,7 @@ if (!root || !canvas) {
   canvas.dataset.origynThreeLoaded = "true";
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -27,8 +27,7 @@ if (!root || !canvas) {
   const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
   camera.position.set(0, 3.2, 11.5);
 
-  const ambient = new THREE.HemisphereLight(0xffffff, 0xd8d8d8, 2.3);
-  scene.add(ambient);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xd8d8d8, 2.3));
 
   const key = new THREE.DirectionalLight(0xffffff, 3.2);
   key.position.set(-4, 8, 7);
@@ -78,45 +77,33 @@ if (!root || !canvas) {
   const shoeMat = new THREE.MeshStandardMaterial({ color: 0x303030, roughness: 0.75 });
   const whiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.45 });
 
-  // Torso + jacket
   const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.5, 1.05, 8, 16), bodyMat);
   body.position.y = 2.0;
   body.scale.set(1, 1.05, 0.8);
   body.castShadow = true;
   person.add(body);
 
-  // Shirt/brand strip
-  const chest = new THREE.Mesh(
-    new RoundedBoxGeometry(0.62, 0.38, 0.08, 4, 0.04),
-    accentMat
-  );
+  const chest = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.38, 0.08), accentMat);
   chest.position.set(0, 2.12, 0.43);
-  chest.castShadow = true;
   person.add(chest);
 
-  // Head
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.39, 24, 18), skinMat);
   head.position.y = 3.1;
   head.castShadow = true;
   person.add(head);
 
-  // Hair/cap
   const cap = new THREE.Mesh(
     new THREE.SphereGeometry(0.42, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.48),
     accentMat
   );
   cap.position.y = 3.22;
-  cap.castShadow = true;
   person.add(cap);
 
-  // Small cap visor
-  const visor = new THREE.Mesh(new RoundedBoxGeometry(0.45, 0.08, 0.25, 4, 0.03), accentMat);
+  const visor = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.08, 0.25), accentMat);
   visor.position.set(0, 3.13, 0.34);
   visor.rotation.x = -0.12;
-  visor.castShadow = true;
   person.add(visor);
 
-  // Eyes: gives the character a more intentional face without using textures.
   const eyeGeo = new THREE.SphereGeometry(0.035, 10, 8);
   const eyeL = new THREE.Mesh(eyeGeo, whiteMat);
   const eyeR = eyeL.clone();
@@ -124,51 +111,37 @@ if (!root || !canvas) {
   eyeR.position.set(0.13, 3.08, 0.34);
   person.add(eyeL, eyeR);
 
-  // Backpack
-  const backpack = new THREE.Mesh(
-    new RoundedBoxGeometry(0.82, 1.0, 0.32, 5, 0.08),
-    accentMat
-  );
+  const backpack = new THREE.Mesh(new THREE.BoxGeometry(0.82, 1.0, 0.32), accentMat);
   backpack.position.set(0, 2.05, -0.42);
   backpack.castShadow = true;
   person.add(backpack);
 
-  // Arms
   const armL = new THREE.Mesh(new THREE.CapsuleGeometry(0.13, 0.72, 6, 10), bodyMat);
   const armR = armL.clone();
   armL.position.set(-0.56, 2.05, 0);
   armR.position.set(0.56, 2.05, 0);
   armL.rotation.z = 0.45;
   armR.rotation.z = -0.45;
-  armL.castShadow = armR.castShadow = true;
   person.add(armL, armR);
 
-  // Hands
   const handL = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 10), skinMat);
   const handR = handL.clone();
   handL.position.set(-0.83, 1.73, 0);
   handR.position.set(0.83, 1.73, 0);
   person.add(handL, handR);
 
-  // Legs
   const legL = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.85, 6, 10), bodyMat);
   const legR = legL.clone();
   legL.position.set(-0.22, 0.85, 0);
   legR.position.set(0.22, 0.85, 0);
   legL.rotation.z = 0.08;
   legR.rotation.z = -0.08;
-  legL.castShadow = legR.castShadow = true;
   person.add(legL, legR);
 
-  // Shoes
-  const shoeL = new THREE.Mesh(
-    new RoundedBoxGeometry(0.38, 0.18, 0.62, 4, 0.06),
-    shoeMat
-  );
+  const shoeL = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.18, 0.62), shoeMat);
   const shoeR = shoeL.clone();
   shoeL.position.set(-0.22, 0.23, 0.13);
   shoeR.position.set(0.22, 0.23, 0.13);
-  shoeL.castShadow = shoeR.castShadow = true;
   person.add(shoeL, shoeR);
 
   /* ---------- PACKAGE ---------- */
@@ -177,7 +150,7 @@ if (!root || !canvas) {
   world.add(box);
 
   const boxMat = new THREE.MeshStandardMaterial({ color: 0xb8783f, roughness: 0.78 });
-  const parcel = new THREE.Mesh(new RoundedBoxGeometry(1.25, 1.05, 1.25, 5, 0.08), boxMat);
+  const parcel = new THREE.Mesh(new THREE.BoxGeometry(1.25, 1.05, 1.25), boxMat);
   parcel.castShadow = true;
   parcel.receiveShadow = true;
   box.add(parcel);
@@ -209,13 +182,12 @@ if (!root || !canvas) {
 
   techLabels.forEach((label, i) => {
     const card = new THREE.Mesh(
-      new RoundedBoxGeometry(1.25, 1.25, 0.18, 6, 0.08),
+      new THREE.BoxGeometry(1.25, 1.25, 0.18),
       new THREE.MeshStandardMaterial({ color: techColors[i], roughness: 0.35, metalness: 0.12 })
     );
     card.position.set((i - 1) * 1.45, i === 1 ? 0.15 : 0, 0);
     card.rotation.z = (i - 1) * 0.08;
     card.scale.setScalar(0.001);
-    card.castShadow = true;
     techGroup.add(card);
     techMeshes.push(card);
   });
@@ -249,7 +221,6 @@ if (!root || !canvas) {
     const impact = THREE.MathUtils.smoothstep(Math.max((p - 0.34) / 0.16, 0), 0, 1);
     const reveal = THREE.MathUtils.smoothstep(Math.max((p - 0.56) / 0.44, 0), 0, 1);
 
-    // Walk cycle remains tied to the original scroll progression.
     person.position.x = THREE.MathUtils.lerp(-4.6, -2.25, walk);
     const step = Math.sin(time * 0.012) * 0.13 * walk * (1 - impact);
     legL.rotation.z = 0.08 + step;
@@ -258,8 +229,6 @@ if (!root || !canvas) {
     armR.rotation.z = -0.45 - step * 1.5;
     handL.position.x = -0.83 - step * 0.15;
     handR.position.x = 0.83 + step * 0.15;
-
-    // Subtle body bounce makes the walk feel less static.
     person.position.y = Math.sin(time * 0.024) * 0.035 * walk * (1 - impact);
     person.rotation.z = Math.sin(time * 0.012) * 0.018 * walk;
 
@@ -287,7 +256,6 @@ if (!root || !canvas) {
   updateScrollTarget();
   window.addEventListener("resize", resize, { passive: true });
   window.addEventListener("scroll", updateScrollTarget, { passive: true });
-
   requestAnimationFrame(animateScene);
-  console.log("Origyn 3D Phase 1 loaded — stylized delivery character ready.");
+  console.log("Origyn 3D loaded successfully.");
 }
