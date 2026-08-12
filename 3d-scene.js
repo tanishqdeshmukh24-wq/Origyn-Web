@@ -1,8 +1,6 @@
 /* =========================================================
    ORIGYN — PROCEDURAL THREE.JS STORY SCENE
    Phase 1: stylized 3D delivery character.
-   No external Three.js example modules are used so the scene
-   can load reliably in the browser.
 ========================================================= */
 
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.179.1/build/three.module.js";
@@ -42,31 +40,20 @@ if (!root || !canvas) {
   const world = new THREE.Group();
   scene.add(world);
 
-  /* ---------- ENVIRONMENT ---------- */
-  const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(30, 16),
-    new THREE.MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.92 })
-  );
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 16), new THREE.MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.92 }));
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
   world.add(floor);
 
-  const road = new THREE.Mesh(
-    new THREE.BoxGeometry(30, 0.08, 4.8),
-    new THREE.MeshStandardMaterial({ color: 0x171717, roughness: 0.9 })
-  );
+  const road = new THREE.Mesh(new THREE.BoxGeometry(30, 0.08, 4.8), new THREE.MeshStandardMaterial({ color: 0x171717, roughness: 0.9 }));
   road.position.y = 0.04;
   road.receiveShadow = true;
   world.add(road);
 
-  const lane = new THREE.Mesh(
-    new THREE.BoxGeometry(30, 0.025, 0.08),
-    new THREE.MeshBasicMaterial({ color: 0xffffff })
-  );
+  const lane = new THREE.Mesh(new THREE.BoxGeometry(30, 0.025, 0.08), new THREE.MeshBasicMaterial({ color: 0xffffff }));
   lane.position.y = 0.09;
   world.add(lane);
 
-  /* ---------- DELIVERY CHARACTER ---------- */
   const person = new THREE.Group();
   person.position.set(-4.6, 0, 0);
   world.add(person);
@@ -92,10 +79,7 @@ if (!root || !canvas) {
   head.castShadow = true;
   person.add(head);
 
-  const cap = new THREE.Mesh(
-    new THREE.SphereGeometry(0.42, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.48),
-    accentMat
-  );
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.42, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.48), accentMat);
   cap.position.y = 3.22;
   person.add(cap);
 
@@ -144,47 +128,31 @@ if (!root || !canvas) {
   shoeR.position.set(0.22, 0.23, 0.13);
   person.add(shoeL, shoeR);
 
-  /* ---------- PACKAGE ---------- */
   const box = new THREE.Group();
   box.position.set(-2.9, 0.65, 0);
   world.add(box);
-
   const boxMat = new THREE.MeshStandardMaterial({ color: 0xb8783f, roughness: 0.78 });
   const parcel = new THREE.Mesh(new THREE.BoxGeometry(1.25, 1.05, 1.25), boxMat);
   parcel.castShadow = true;
   parcel.receiveShadow = true;
   box.add(parcel);
-
-  const tape = new THREE.Mesh(
-    new THREE.BoxGeometry(0.18, 1.08, 1.28),
-    new THREE.MeshStandardMaterial({ color: 0xe6d7b5, roughness: 0.6 })
-  );
+  const tape = new THREE.Mesh(new THREE.BoxGeometry(0.18, 1.08, 1.28), new THREE.MeshStandardMaterial({ color: 0xe6d7b5, roughness: 0.6 }));
   box.add(tape);
 
-  /* ---------- OBSTACLE ---------- */
-  const rock = new THREE.Mesh(
-    new THREE.DodecahedronGeometry(0.58, 1),
-    new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 1 })
-  );
+  const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.58, 1), new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 1 }));
   rock.position.set(1.1, 0.55, 0);
   rock.scale.set(1.2, 0.8, 0.9);
   rock.castShadow = true;
   world.add(rock);
 
-  /* ---------- TECHNOLOGY REVEAL ---------- */
   const techGroup = new THREE.Group();
   techGroup.position.set(3.0, 1.9, 0);
   world.add(techGroup);
-
   const techColors = [0x6c63ff, 0x111111, 0x3b82f6];
-  const techLabels = ["AI", "WEB", "IoT"];
   const techMeshes = [];
 
-  techLabels.forEach((label, i) => {
-    const card = new THREE.Mesh(
-      new THREE.BoxGeometry(1.25, 1.25, 0.18),
-      new THREE.MeshStandardMaterial({ color: techColors[i], roughness: 0.35, metalness: 0.12 })
-    );
+  ["AI", "WEB", "IoT"].forEach((label, i) => {
+    const card = new THREE.Mesh(new THREE.BoxGeometry(1.25, 1.25, 0.18), new THREE.MeshStandardMaterial({ color: techColors[i], roughness: 0.35, metalness: 0.12 }));
     card.position.set((i - 1) * 1.45, i === 1 ? 0.15 : 0, 0);
     card.rotation.z = (i - 1) * 0.08;
     card.scale.setScalar(0.001);
@@ -203,12 +171,15 @@ if (!root || !canvas) {
     camera.updateProjectionMatrix();
   }
 
+  /* Map the story animation to the actual story section instead of the
+     previous viewport formula, which started the sequence halfway through. */
   function updateScrollTarget() {
     const rect = root.getBoundingClientRect();
     const viewport = window.innerHeight;
-    const travel = Math.max(viewport + root.offsetHeight, 1);
-    const raw = (viewport - rect.top) / travel;
-    state.target = THREE.MathUtils.clamp((raw - 0.05) / 0.72, 0, 1);
+    const start = viewport * 0.82;
+    const end = -root.offsetHeight + viewport * 0.18;
+    const span = Math.max(start - end, 1);
+    state.target = THREE.MathUtils.clamp((start - rect.top) / span, 0, 1);
   }
 
   function animateScene(time) {
