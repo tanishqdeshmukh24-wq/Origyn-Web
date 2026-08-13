@@ -10,14 +10,34 @@ document.addEventListener("DOMContentLoaded", () => {
   const $$ = (s, root = document) => [...root.querySelectorAll(s)];
   const money = value => `₹${Number(value || 0).toLocaleString("en-IN")}`;
 
-  const products = [
-    { name: "NeuraVision AI", category: "ai", categoryName: "Artificial Intelligence", description: "An intelligent AI platform designed to automate everyday workflows.", price: 2499, creator: "Origyn Labs", image: "AI" },
-    { name: "RoboArm X1", category: "hardware", categoryName: "Hardware", description: "A modular robotic arm built for automation and experimentation.", price: 18999, creator: "Origyn Labs", image: "HW" },
-    { name: "DevFlow", category: "software", categoryName: "Software", description: "A developer productivity tool designed to simplify modern workflows.", price: 999, creator: "Origyn Labs", image: "SW" },
-    { name: "HomeSense", category: "iot", categoryName: "IoT", description: "Smart sensors that bring intelligent automation to your home.", price: 3499, creator: "Origyn Labs", image: "IOT" },
-    { name: "VisionCore", category: "ai", categoryName: "Machine Learning", description: "A computer vision toolkit for developers and researchers.", price: 4999, creator: "Origyn Labs", image: "ML" },
-    { name: "CloudForge", category: "iot", categoryName: "Web Technology", description: "Tools for building and deploying modern web applications faster.", price: 1499, creator: "Origyn Labs", image: "WEB" }
-  ];
+  let products = [];
+
+async function loadProducts() {
+  try {
+    const response = await fetch("http://localhost:5000/api/technologies");
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch technologies");
+    }
+
+    const data = await response.json();
+
+    products = data.map(product => ({
+      ...product,
+      categoryName:
+        categoryNames[product.category] || product.category,
+      image:
+        imageLabels[product.category] || "TECH"
+    }));
+
+    renderProducts();
+    refreshFavoriteButtons();
+    filterProducts();
+
+  } catch (error) {
+    console.error("Failed to load products:", error);
+  }
+}
 
   const categoryNames = { ai: "Artificial Intelligence", hardware: "Hardware", software: "Software", iot: "IoT / Web" };
   const imageLabels = { ai: "AI", hardware: "HW", software: "SW", iot: "IOT" };
@@ -39,6 +59,50 @@ document.addEventListener("DOMContentLoaded", () => {
   /* =========================================================
      NAVIGATION
   ========================================================= */
+  async function loadProducts() {
+  try {
+    const response = await fetch("http://localhost:5000/api/technologies");
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    products = data.map(product => ({
+      ...product,
+      categoryName:
+        product.categoryName ||
+        categoryNames[product.category] ||
+        product.category ||
+        "Technology",
+      image:
+        product.image ||
+        imageLabels[product.category] ||
+        "TECH"
+    }));
+
+    if (productGrid) {
+      productGrid.innerHTML = "";
+
+      products.forEach((product, index) => {
+        renderDynamicProduct(product, index);
+      });
+
+      $$(".product-card").forEach(decorateProductCard);
+    }
+
+    refreshFavoriteButtons();
+    filterProducts();
+
+    console.log("Technologies loaded from API:", products);
+
+  } catch (error) {
+    console.error("Failed to load technologies:", error);
+  }
+}
+
+  /* ========================= NAVIGATION ========================= */
   function scrollToSection(id) {
     const target = document.getElementById(id);
     if (!target) return;
@@ -474,6 +538,7 @@ document.addEventListener("DOMContentLoaded", () => {
     ScrollTrigger.refresh();
   }
 
+  loadProducts();
   renderCart();
   filterProducts();
   window.addEventListener("load", initAnimations, { once: true });

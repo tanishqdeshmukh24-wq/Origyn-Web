@@ -1,7 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
-const { Pool } = require("pg");
+const pool = require("./src/config/db");
+
 
 dotenv.config();
 
@@ -10,9 +11,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL
-});
+
 
 app.get("/", (req, res) => {
     res.json({
@@ -40,3 +39,15 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Origyn backend running on http://localhost:${PORT}`);
 });
+
+
+
+pool.query("SELECT NOW( )",(err,result)=> {
+    if (err) {
+        console.error("database connection failed:",err);
+    } else{
+        console.log("database connected:", result.rows[0]);
+    }
+});
+
+app.use(cors());
