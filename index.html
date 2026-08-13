@@ -4,136 +4,35 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Origyn — Discover Technology</title>
-  <link rel="stylesheet" href="style.css?v=4">
-  <link rel="stylesheet" href="3d.css?v=1">
+  <link rel="stylesheet" href="style.css">
+  <style>#product-details.active { display: flex; }</style>
 </head>
 <body>
-
-  <!-- GLOBAL UI -->
   <button id="cart-button" type="button">🛒 Cart <span id="cart-button-count">0</span></button>
-
-  <div id="cart-drawer" aria-hidden="true">
-    <div class="cart-header"><h2>Your Cart</h2><button id="close-cart" type="button">×</button></div>
-    <div id="cart-items"></div>
-    <div class="cart-footer"><div class="cart-total"><span>Total</span><strong id="cart-total">₹0</strong></div><button id="checkout-btn" type="button">Proceed to Pay →</button></div>
-  </div>
-
-  <div id="checkout-screen" aria-hidden="true">
-    <div class="checkout-container">
-      <button id="back-to-cart" type="button">← Back to Cart</button>
-      <p class="section-label">CHECKOUT</p>
-      <h2>Complete your order</h2>
-      <p class="checkout-subtitle">Review your information before placing your order.</p>
-      <div class="checkout-layout">
-        <div class="checkout-form">
-          <div class="form-group"><label for="checkout-name">Full Name</label><input id="checkout-name" type="text" required></div>
-          <div class="form-group"><label for="checkout-email">Email</label><input id="checkout-email" type="email" required></div>
-          <div class="form-group"><label for="checkout-address">Delivery Address</label><textarea id="checkout-address" required></textarea></div>
-          <div class="form-group"><label for="checkout-city">City</label><input id="checkout-city" type="text" required></div>
-          <div class="form-group"><label for="checkout-pincode">PIN Code</label><input id="checkout-pincode" type="text" maxlength="6" required></div>
-        </div>
-        <div class="checkout-summary">
-          <h3>Order Summary</h3><div id="checkout-items"></div>
-          <div class="checkout-summary-total"><span>Total</span><strong id="checkout-total">₹0</strong></div>
-          <button id="place-order-btn" type="button">Place Order →</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- NAVIGATION -->
-  <header>
-    <nav>
-      <div class="logo">Origyn</div>
-      <div class="nav-links">
-        <a href="#home">Home</a><a href="#discover">Discover</a><a href="#sell">Sell Your Tech</a><a href="#about">About</a><a href="#contact">Contact</a>
-        <button id="favorites-nav" type="button">♡<span id="favorites-count">0</span></button>
-        <button id="cart-nav" type="button">🛒<span id="cart-count">0</span></button>
-      </div>
-    </nav>
-  </header>
-
+  <div id="cart-drawer" aria-hidden="true"><div class="cart-header"><h2>Your Cart</h2><button id="close-cart" type="button">×</button></div><div id="cart-items"></div><div class="cart-footer"><div class="cart-total"><span>Total</span><strong id="cart-total">₹0</strong></div><button id="checkout-btn" type="button">Proceed to Pay →</button></div></div>
+  <div id="checkout-screen" aria-hidden="true"><div class="checkout-container"><button id="back-to-cart" type="button">← Back to Cart</button><p class="section-label">CHECKOUT</p><h2>Complete your order</h2><p class="checkout-subtitle">Review your information before placing your order.</p><div class="checkout-layout"><div class="checkout-form"><div class="form-group"><label for="checkout-name">Full Name</label><input id="checkout-name" type="text" required></div><div class="form-group"><label for="checkout-email">Email</label><input id="checkout-email" type="email" required></div><div class="form-group"><label for="checkout-address">Delivery Address</label><textarea id="checkout-address" required></textarea></div><div class="form-group"><label for="checkout-city">City</label><input id="checkout-city" type="text" required></div><div class="form-group"><label for="checkout-pincode">PIN Code</label><input id="checkout-pincode" type="text" maxlength="6" required></div></div><div class="checkout-summary"><h3>Order Summary</h3><div id="checkout-items"></div><div class="checkout-summary-total"><span>Total</span><strong id="checkout-total">₹0</strong></div><button id="place-order-btn" type="button">Place Order →</button></div></div></div></div>
+  <header><nav><div class="logo">Origyn</div><div class="nav-links"><a href="#home">Home</a><a href="#discover">Discover</a><a href="#sell">Sell Your Tech</a><a href="#about">About</a><a href="#contact">Contact</a><button id="favorites-nav" type="button">♡<span id="favorites-count">0</span></button><button id="cart-nav" type="button">🛒<span id="cart-count">0</span></button></div></nav></header>
   <main>
-    <!-- HERO -->
-    <section id="home">
-      <h1>Where Technology Finds Its Market.</h1>
-      <p>Discover, showcase and sell innovative technology with Origyn.</p>
-      <div class="hero-buttons">
-        <button id="explore-btn" type="button">Explore Technology</button>
-        <button id="sell-btn" type="button">Sell Your Tech</button>
-      </div>
-    </section>
-
-    <!-- MARKETPLACE -->
-    <section id="discover">
-      <div class="section-heading"><p class="section-label">DISCOVER</p><h2>Technology worth knowing.</h2><p>Explore innovative products, tools and ideas built by creators.</p></div>
-      <div class="marketplace-controls">
-        <div class="search-box"><input id="product-search" type="text" placeholder="Search technology..."></div>
-        <div class="category-filters">
-          <button class="filter-btn active" data-category="all" type="button">All</button><button class="filter-btn" data-category="ai" type="button">AI / ML</button><button class="filter-btn" data-category="hardware" type="button">Hardware</button><button class="filter-btn" data-category="software" type="button">Software</button><button class="filter-btn" data-category="iot" type="button">IoT / Web</button>
-        </div>
-      </div>
-      <div class="product-grid">
-        <article class="product-card"><div class="product-image">AI</div><div class="product-content"><p class="product-category">Artificial Intelligence</p><h3>NeuraVision AI</h3><p>An intelligent AI platform designed to automate everyday workflows.</p><div class="product-bottom"><strong>₹2,499</strong><div class="product-actions"><a href="#product-details" data-view-product="0">View Product →</a><button class="add-to-cart-btn" data-add-product="0" type="button">Add to Cart</button></div></div></div></article>
-        <article class="product-card"><div class="product-image">HW</div><div class="product-content"><p class="product-category">Hardware</p><h3>RoboArm X1</h3><p>A modular robotic arm built for automation and experimentation.</p><div class="product-bottom"><strong>₹18,999</strong><div class="product-actions"><a href="#product-details" data-view-product="1">View Product →</a><button class="add-to-cart-btn" data-add-product="1" type="button">Add to Cart</button></div></div></div></article>
-        <article class="product-card"><div class="product-image">SW</div><div class="product-content"><p class="product-category">Software</p><h3>DevFlow</h3><p>A developer productivity tool designed to simplify modern workflows.</p><div class="product-bottom"><strong>₹999</strong><div class="product-actions"><a href="#product-details" data-view-product="2">View Product →</a><button class="add-to-cart-btn" data-add-product="2" type="button">Add to Cart</button></div></div></div></article>
-        <article class="product-card"><div class="product-image">IOT</div><div class="product-content"><p class="product-category">IoT</p><h3>HomeSense</h3><p>Smart sensors that bring intelligent automation to your home.</p><div class="product-bottom"><strong>₹3,499</strong><div class="product-actions"><a href="#product-details" data-view-product="3">View Product →</a><button class="add-to-cart-btn" data-add-product="3" type="button">Add to Cart</button></div></div></div></article>
-        <article class="product-card"><div class="product-image">ML</div><div class="product-content"><p class="product-category">Machine Learning</p><h3>VisionCore</h3><p>A computer vision toolkit for developers and researchers.</p><div class="product-bottom"><strong>₹4,999</strong><div class="product-actions"><a href="#product-details" data-view-product="4">View Product →</a><button class="add-to-cart-btn" data-add-product="4" type="button">Add to Cart</button></div></div></div></article>
-        <article class="product-card"><div class="product-image">WEB</div><div class="product-content"><p class="product-category">Web Technology</p><h3>CloudForge</h3><p>Tools for building and deploying modern web applications faster.</p><div class="product-bottom"><strong>₹1,499</strong><div class="product-actions"><a href="#product-details" data-view-product="5">View Product →</a><button class="add-to-cart-btn" data-add-product="5" type="button">Add to Cart</button></div></div></div></article>
-      </div>
-    </section>
-
-    <!-- PRODUCT DETAILS -->
-    <section id="product-details">
-      <div class="product-detail-content">
-        <button id="back-to-marketplace" type="button">← Back to Marketplace</button>
-        <div class="product-detail-grid">
-          <div class="product-detail-image" id="detail-image">AI</div>
-          <div class="product-detail-info"><p class="section-label" id="detail-category">ARTIFICIAL INTELLIGENCE</p><h2 id="detail-name">NeuraVision AI</h2><p id="detail-description">An intelligent AI platform designed to automate everyday workflows.</p><div class="detail-meta"><div><span>Creator</span><strong id="detail-creator">Origyn Labs</strong></div><div><span>Price</span><strong id="detail-price">₹2,499</strong></div></div><button id="get-product-btn" type="button">Get This Technology →</button></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 3D STORY -->
-    <section id="story">
-      <div class="story-content"><p class="section-label">THE ORIGYN STORY</p><h2>Technology<br>on the move.</h2>
-        <div class="delivery-scene">
-          <canvas id="origyn-3d-canvas" aria-label="Origyn 3D technology delivery scene"></canvas>
-          <div class="delivery-man">🚶‍♂️</div><div class="delivery-box">📦</div><div class="rock">🪨</div><div class="tech-reveal"><div class="tech-item">AI</div><div class="tech-item">WEB</div><div class="tech-item">IoT</div></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- SELL -->
-    <section id="sell">
-      <div class="sell-content"><p class="section-label">FOR CREATORS</p><h2>You build it.<br>We help you sell it.</h2><p>Bring your technology to Origyn and put your product in front of people who are looking for what you built.</p><button id="start-selling-btn" type="button">Start Selling</button></div>
-      <div class="sell-steps"><div class="sell-step"><span>01</span><h3>Submit</h3><p>Tell us about your technology or project.</p></div><div class="sell-step"><span>02</span><h3>Showcase</h3><p>We help present your product to the right audience.</p></div><div class="sell-step"><span>03</span><h3>Connect</h3><p>Connect with potential customers and opportunities.</p></div></div>
-    </section>
-
-    <!-- LISTING -->
-    <section id="submit-tech">
-      <div class="submit-header"><p class="section-label">START SELLING</p><h2>Turn your technology<br>into something<br>people can discover.</h2><p class="submit-intro">Create a listing for your technology and put your idea in front of people looking for what you built.</p></div>
-      <div class="listing-workspace">
-        <div class="listing-form-panel"><div class="panel-top"><div><span class="panel-number">01</span><h3>Create your listing</h3></div><span class="panel-status">DRAFT</span></div>
-          <form id="tech-form"><div class="form-group"><label for="tech-name">Technology Name</label><input id="tech-name" type="text" required></div><div class="form-group"><label for="tech-category">Category</label><select id="tech-category" required><option value="">Select category</option><option value="ai">AI / ML</option><option value="hardware">Hardware</option><option value="software">Software</option><option value="iot">IoT / Web</option></select></div><div class="form-group"><label for="tech-description">Description</label><textarea id="tech-description" required></textarea></div><div class="form-row"><div class="form-group"><label for="tech-price">Price</label><div class="input-prefix"><span>₹</span><input id="tech-price" type="number" min="0" required></div></div><div class="form-group"><label for="tech-creator">Creator</label><input id="tech-creator" type="text" required></div></div><button id="preview-listing-btn" class="listing-action primary" type="submit">Preview Listing <span>→</span></button><p id="form-message"></p></form>
-        </div>
-        <div id="listing-preview" class="listing-preview-panel"><div class="panel-top"><div><span class="panel-number">02</span><h3>Live preview</h3></div><span class="panel-status live">LIVE</span></div><div class="preview-card"><div class="preview-image" id="preview-image">TECH</div><div class="preview-content"><p id="preview-category">CATEGORY</p><h3 id="preview-name">Your Technology</h3><p id="preview-description">Your technology description will appear here.</p><div class="preview-bottom"><strong id="preview-price">₹0</strong><span>by <strong id="preview-creator">Creator</strong></span></div></div></div><button id="publish-listing-btn" class="listing-action publish" type="button">Publish to Marketplace <span>→</span></button></div>
-      </div>
-      <div class="listing-process"><div class="process-step"><span>01</span><div><h4>Create</h4><p>Tell people what you built.</p></div></div><div class="process-step"><span>02</span><div><h4>Preview</h4><p>See how your listing looks.</p></div></div><div class="process-step"><span>03</span><div><h4>Publish</h4><p>Put your technology on Origyn.</p></div></div></div>
-    </section>
-
-    <!-- ABOUT -->
+    <section id="home"><h1>Where Technology Finds Its Market.</h1><p>Discover, showcase and sell innovative technology with Origyn.</p><div class="hero-buttons"><button id="explore-btn" type="button">Explore Technology</button><button id="sell-btn" type="button">Sell Your Tech</button></div></section>
+    <section id="discover"><div class="section-heading"><p class="section-label">DISCOVER</p><h2>Technology worth knowing.</h2><p>Explore innovative products, tools and ideas built by creators.</p></div><div class="marketplace-controls"><div class="search-box"><input id="product-search" type="text" placeholder="Search technology..."></div><div class="category-filters"><button class="filter-btn active" data-category="all" type="button">All</button><button class="filter-btn" data-category="ai" type="button">AI / ML</button><button class="filter-btn" data-category="hardware" type="button">Hardware</button><button class="filter-btn" data-category="software" type="button">Software</button><button class="filter-btn" data-category="iot" type="button">IoT / Web</button></div></div><div class="product-grid">
+      <article class="product-card"><div class="product-image">AI</div><div class="product-content"><p class="product-category">Artificial Intelligence</p><h3>NeuraVision AI</h3><p>An intelligent AI platform designed to automate everyday workflows.</p><div class="product-bottom"><strong>₹2,499</strong><div class="product-actions"><a href="#product-details" data-view-product="0">View Product →</a><button class="add-to-cart-btn" data-add-product="0" type="button">Add to Cart</button></div></div></div></article>
+      <article class="product-card"><div class="product-image">HW</div><div class="product-content"><p class="product-category">Hardware</p><h3>RoboArm X1</h3><p>A modular robotic arm built for automation and experimentation.</p><div class="product-bottom"><strong>₹18,999</strong><div class="product-actions"><a href="#product-details" data-view-product="1">View Product →</a><button class="add-to-cart-btn" data-add-product="1" type="button">Add to Cart</button></div></div></div></article>
+      <article class="product-card"><div class="product-image">SW</div><div class="product-content"><p class="product-category">Software</p><h3>DevFlow</h3><p>A developer productivity tool designed to simplify modern workflows.</p><div class="product-bottom"><strong>₹999</strong><div class="product-actions"><a href="#product-details" data-view-product="2">View Product →</a><button class="add-to-cart-btn" data-add-product="2" type="button">Add to Cart</button></div></div></div></article>
+      <article class="product-card"><div class="product-image">IOT</div><div class="product-content"><p class="product-category">IoT</p><h3>HomeSense</h3><p>Smart sensors that bring intelligent automation to your home.</p><div class="product-bottom"><strong>₹3,499</strong><div class="product-actions"><a href="#product-details" data-view-product="3">View Product →</a><button class="add-to-cart-btn" data-add-product="3" type="button">Add to Cart</button></div></div></div></article>
+      <article class="product-card"><div class="product-image">ML</div><div class="product-content"><p class="product-category">Machine Learning</p><h3>VisionCore</h3><p>A computer vision toolkit for developers and researchers.</p><div class="product-bottom"><strong>₹4,999</strong><div class="product-actions"><a href="#product-details" data-view-product="4">View Product →</a><button class="add-to-cart-btn" data-add-product="4" type="button">Add to Cart</button></div></div></div></article>
+      <article class="product-card"><div class="product-image">WEB</div><div class="product-content"><p class="product-category">Web Technology</p><h3>CloudForge</h3><p>Tools for building and deploying modern web applications faster.</p><div class="product-bottom"><strong>₹1,499</strong><div class="product-actions"><a href="#product-details" data-view-product="5">View Product →</a><button class="add-to-cart-btn" data-add-product="5" type="button">Add to Cart</button></div></div></div></article>
+    </div></section>
+    <section id="product-details"><div class="product-detail-content"><button id="back-to-marketplace" type="button">← Back to Marketplace</button><div class="product-detail-grid"><div class="product-detail-image" id="detail-image">AI</div><div class="product-detail-info"><p class="section-label" id="detail-category">ARTIFICIAL INTELLIGENCE</p><h2 id="detail-name">NeuraVision AI</h2><p id="detail-description">An intelligent AI platform designed to automate everyday workflows.</p><div class="detail-meta"><div><span>Creator</span><strong id="detail-creator">Origyn Labs</strong></div><div><span>Price</span><strong id="detail-price">₹2,499</strong></div></div><button id="get-product-btn" type="button">Get This Technology →</button></div></div></div></section>
+    <section id="story"><div class="story-content"><p class="section-label">THE ORIGYN STORY</p><h2>Technology<br>on the move.</h2><div class="delivery-scene"><div class="delivery-man">🚶‍♂️</div><div class="delivery-box">📦</div><div class="rock">🪨</div><div class="tech-reveal"><div class="tech-item">AI</div><div class="tech-item">WEB</div><div class="tech-item">IoT</div></div></div></div></section>
+    <section id="sell"><div class="sell-content"><p class="section-label">FOR CREATORS</p><h2>You build it.<br>We help you sell it.</h2><p>Bring your technology to Origyn and put your product in front of people who are looking for what you built.</p><button id="start-selling-btn" type="button">Start Selling</button></div><div class="sell-steps"><div class="sell-step"><span>01</span><h3>Submit</h3><p>Tell us about your technology or project.</p></div><div class="sell-step"><span>02</span><h3>Showcase</h3><p>We help present your product to the right audience.</p></div><div class="sell-step"><span>03</span><h3>Connect</h3><p>Connect with potential customers and opportunities.</p></div></div></section>
+    <section id="submit-tech"><div class="submit-header"><p class="section-label">START SELLING</p><h2>Turn your technology<br>into something<br>people can discover.</h2><p class="submit-intro">Create a listing for your technology and put your idea in front of people looking for what you built.</p></div><div class="listing-workspace"><div class="listing-form-panel"><div class="panel-top"><div><span class="panel-number">01</span><h3>Create your listing</h3></div><span class="panel-status">DRAFT</span></div><form id="tech-form"><div class="form-group"><label for="tech-name">Technology Name</label><input id="tech-name" type="text" required></div><div class="form-group"><label for="tech-category">Category</label><select id="tech-category" required><option value="">Select category</option><option value="ai">AI / ML</option><option value="hardware">Hardware</option><option value="software">Software</option><option value="iot">IoT / Web</option></select></div><div class="form-group"><label for="tech-description">Description</label><textarea id="tech-description" required></textarea></div><div class="form-row"><div class="form-group"><label for="tech-price">Price</label><div class="input-prefix"><span>₹</span><input id="tech-price" type="number" min="0" required></div></div><div class="form-group"><label for="tech-creator">Creator</label><input id="tech-creator" type="text" required></div></div><button id="preview-listing-btn" class="listing-action primary" type="submit">Preview Listing <span>→</span></button><p id="form-message"></p></form></div><div id="listing-preview" class="listing-preview-panel"><div class="panel-top"><div><span class="panel-number">02</span><h3>Live preview</h3></div><span class="panel-status live">LIVE</span></div><div class="preview-card"><div class="preview-image" id="preview-image">TECH</div><div class="preview-content"><p id="preview-category">CATEGORY</p><h3 id="preview-name">Your Technology</h3><p id="preview-description">Your technology description will appear here.</p><div class="preview-bottom"><strong id="preview-price">₹0</strong><span>by <strong id="preview-creator">Creator</strong></span></div></div></div><button id="publish-listing-btn" class="listing-action publish" type="button">Publish to Marketplace <span>→</span></button></div></div><div class="listing-process"><div class="process-step"><span>01</span><div><h4>Create</h4><p>Tell people what you built.</p></div></div><div class="process-step"><span>02</span><div><h4>Preview</h4><p>See how your listing looks.</p></div></div><div class="process-step"><span>03</span><div><h4>Publish</h4><p>Put your technology on Origyn.</p></div></div></div></section>
     <section id="about"><div class="about-heading"><p class="section-label">ABOUT ORIGYN</p><h2>Great ideas shouldn't<br>disappear into the crowd.</h2></div><div class="about-text"><p>Origyn is a technology marketing platform built to help creators, developers and innovators bring their products into the spotlight.</p><p>We connect innovative technology with the people, communities and opportunities that can help it grow.</p></div><div class="about-stats"><div class="about-stat"><span>01</span><h3>Discover</h3><p>Find technology worth knowing about.</p></div><div class="about-stat"><span>02</span><h3>Market</h3><p>Give your technology the attention it deserves.</p></div><div class="about-stat"><span>03</span><h3>Connect</h3><p>Turn ideas into meaningful opportunities.</p></div></div></section>
-
-    <!-- CONTACT -->
     <section id="contact"><div class="contact-content"><p class="section-label">GET IN TOUCH</p><h2>Have something<br>worth building?</h2><p>Tell us about your technology, project or idea. Let's get it in front of the right people.</p><a class="contact-button" href="mailto:hello@origyn.com">Talk to Origyn →</a></div></section>
   </main>
-
   <footer><p>© 2026 Origyn. All rights reserved.</p></footer>
-
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js"></script>
-  <script src="script.js?v=4"></script>
-  <script type="module" src="3d-scene.js?v=1"></script>
+  <script src="script.js"></script>
+  <script src="animation-polish.js"></script>
 </body>
 </html>
