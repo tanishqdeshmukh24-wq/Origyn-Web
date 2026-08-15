@@ -2,6 +2,11 @@
 document.addEventListener("DOMContentLoaded", () => {
   "use strict";
 
+  const publisherStyles = document.createElement("link");
+  publisherStyles.rel = "stylesheet";
+  publisherStyles.href = "publisher.css";
+  document.head.appendChild(publisherStyles);
+
   const $ = (selector) => document.querySelector(selector);
   const money = (value) => `₹${Number(value || 0).toLocaleString("en-IN")}`;
 
@@ -38,10 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("scroll", () => header?.classList.toggle("scrolled", window.scrollY > 30), { passive: true });
 
   function readForm() {
-    const data = {
-      name: $("#product-name")?.value.trim(), category: $("#product-category")?.value, type: $("#product-type")?.value,
-      description: $("#product-description")?.value.trim(), priceRaw: $("#product-price")?.value, creator: $("#product-creator")?.value.trim()
-    };
+    const data = { name: $("#product-name")?.value.trim(), category: $("#product-category")?.value, type: $("#product-type")?.value, description: $("#product-description")?.value.trim(), priceRaw: $("#product-price")?.value, creator: $("#product-creator")?.value.trim() };
     const price = Number(data.priceRaw);
     if (!data.name || !data.category || !data.type || !data.description || data.priceRaw === "" || !Number.isFinite(price) || price < 0 || !data.creator) {
       $("#form-message").textContent = "Complete every required field before previewing your product.";
