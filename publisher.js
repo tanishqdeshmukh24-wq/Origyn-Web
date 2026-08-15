@@ -13,6 +13,12 @@ document.addEventListener("DOMContentLoaded", () => {
   let activeImageIndex = 0;
 
   function scrollToSection(id) { const target = document.getElementById(id); if (!target) return; const offset = header ? header.offsetHeight + 15 : 90; window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY - offset, behavior: "smooth" }); }
+  function scrollToPreview() {
+    if (!preview) return;
+    const headerOffset = header ? header.offsetHeight + 30 : 110;
+    const targetTop = preview.getBoundingClientRect().top + window.scrollY - headerOffset;
+    window.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+  }
   document.querySelectorAll(".nav-links a").forEach(link => link.addEventListener("click", event => { const href = link.getAttribute("href"); if (!href?.startsWith("#")) return; event.preventDefault(); scrollToSection(href.slice(1)); }));
   document.querySelectorAll("[data-target]").forEach(button => button.addEventListener("click", () => scrollToSection(button.dataset.target.replace("#", ""))));
   const guideDots = [...document.querySelectorAll(".guide-dot")];
@@ -86,7 +92,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   $("#preview-prev")?.addEventListener("click", () => { if (imageUrls.length < 2) return; activeImageIndex = (activeImageIndex - 1 + imageUrls.length) % imageUrls.length; renderGallery(); });
   $("#preview-next")?.addEventListener("click", () => { if (imageUrls.length < 2) return; activeImageIndex = (activeImageIndex + 1) % imageUrls.length; renderGallery(); });
-  form?.addEventListener("submit", event => { event.preventDefault(); if (updatePreview()) preview?.scrollIntoView({ behavior: "smooth", block: "center" }); });
+  form?.addEventListener("submit", event => { event.preventDefault(); if (updatePreview()) { window.setTimeout(scrollToPreview, 80); } });
   $("#publish-listing-btn")?.addEventListener("click", event => { event.preventDefault(); const data = currentListing || updatePreview(); if (!data) return; $("#form-message").textContent = `Ready to publish “${data.name}”. API connection will submit this listing to Origyn.`; $("#publish-status")?.classList.add("visible"); });
   $("#product-category")?.addEventListener("change", () => { if (currentListing) updatePreview(); }); $("#product-type")?.addEventListener("change", () => { if (currentListing) updatePreview(); }); $("#product-price")?.addEventListener("input", () => { if (currentListing) updatePreview(); });
   renderGallery();
