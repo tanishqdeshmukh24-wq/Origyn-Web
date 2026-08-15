@@ -38,6 +38,32 @@ document.addEventListener('DOMContentLoaded',()=>{
     .store-page .related-product-name b{font-size:15px!important;flex:0 0 auto!important;font-weight:900!important;opacity:.55!important}
     .store-page .related-product-name:hover{transform:translateX(3px)!important;border-color:#ff6b35!important;background:#fff0e5!important;color:#d65327!important;box-shadow:0 8px 20px rgba(80,50,20,.08)!important}
     .store-page .related-product-name:hover b{opacity:1!important}
+    .store-page .search-no-result{grid-column:1/-1!important;padding:48px 24px!important;text-align:center!important;border:1px solid #e8dfd4!important;border-radius:20px!important;background:linear-gradient(135deg,#fff,#faf7f1)!important}
+    .store-page .search-no-result .search-no-icon{font-size:30px!important;margin-bottom:12px!important}
+    .store-page .search-no-result h3{margin:0 0 8px!important;font-size:20px!important}
+    .store-page .search-no-result p{margin:0 auto 16px!important;max-width:520px!important;color:#777!important;line-height:1.6!important}
+    .store-page .search-suggestion{display:inline-flex!important;align-items:center!important;gap:7px!important;border:1px solid #ffb28f!important;background:#fff3ec!important;color:#d65327!important;border-radius:999px!important;padding:9px 14px!important;font-weight:800!important;cursor:pointer!important}
   `;
   document.head.appendChild(style);
+
+  const searchNames=['NeuraVision AI','RoboArm X1','DevFlow','VisionCore','Founder Studio Hoodie','Creator Desk Kit','CloudForge','GamePad Nova','SmartSense Home','Motion Kit','DriveDock','Everyday Carry','AI & Digital','Technology','Hardware','Software','Fashion','Home','Gaming','Sports','Automotive'];
+  const distance=(a,b)=>{a=a.toLowerCase();b=b.toLowerCase();const row=[...Array(b.length+1)].map((_,i)=>i);for(let i=1;i<=a.length;i++){let prev=row[0];row[0]=i;for(let j=1;j<=b.length;j++){const old=row[j];row[j]=a[i-1]===b[j-1]?prev+0:Math.min(row[j]+1,row[j-1]+1,prev+1);prev=old}}return row[b.length]};
+  const suggestionFor=q=>{if(!q)return null;let best=null,bestScore=Infinity;searchNames.forEach(name=>{const n=name.toLowerCase();const d=distance(q,n);const threshold=q.length<=4?1:Math.max(2,Math.floor(q.length*.4));if(d<=threshold&&d<bestScore){best=name;bestScore=d}});return best};
+  const showSearchState=()=>{
+    const grid=document.querySelector('#store-grid');
+    const input=document.querySelector('#store-search');
+    if(!grid||!input||!input.value.trim())return;
+    const q=input.value.trim();
+    const hasProducts=!!grid.querySelector('.product-card');
+    if(hasProducts)return;
+    const suggestion=suggestionFor(q);
+    const empty=grid.querySelector('.saved-empty');
+    if(empty){
+      empty.classList.add('search-no-result');
+      empty.innerHTML=`<div class="search-no-icon">⌕</div><h3>No products found</h3><p>We couldn't find anything for <strong>“${q.replace(/[<>&]/g,'')}</strong>”. Try a different product, category, or check the spelling.</p>${suggestion?`<button type="button" class="search-suggestion" data-search-suggestion="${suggestion}">Did you mean <strong>${suggestion}</strong>?</button>`:''}`;
+    }
+    requestAnimationFrame(()=>{const y=grid.getBoundingClientRect().top+window.scrollY-24;window.scrollTo({top:Math.max(0,y),behavior:'smooth'})});
+  };
+  document.addEventListener('input',e=>{if(e.target.matches('#top-search,#store-search'))setTimeout(showSearchState,190)});
+  document.addEventListener('click',e=>{const b=e.target.closest('[data-search-suggestion]');if(!b)return;const value=b.dataset.searchSuggestion;const input=document.querySelector('#store-search');if(input){input.value=value;input.dispatchEvent(new Event('input',{bubbles:true}))}});
 });
