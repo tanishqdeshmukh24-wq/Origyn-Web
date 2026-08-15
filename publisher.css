@@ -1,0 +1,59 @@
+/* Publisher-only additions. Base Origyn styling remains in style.css. */
+
+#publish {
+  min-height: auto;
+  padding: 150px 8% 130px;
+  display: block;
+}
+
+.publisher-fees {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid #eee;
+}
+
+.publisher-fees div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.publisher-fees span {
+  font-size: 12px;
+  color: #777;
+}
+
+.publisher-fees strong {
+  font-size: 13px;
+}
+
+#publish-status {
+  min-height: 20px;
+  margin-top: 14px;
+  color: #666;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+#publish-status.visible {
+  color: #111;
+}
+
+#learn-btn {
+  background: transparent;
+  color: #111;
+}
+
+#learn-btn:hover {
+  background: #111;
+  color: #fff;
+}
+
+@media (max-width: 900px) {
+  #publish {
+    padding: 110px 20px 90px;
+  }
+}
