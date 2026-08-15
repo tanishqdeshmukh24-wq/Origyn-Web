@@ -5,28 +5,40 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Origyn Publisher — Publish Your Product</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="publisher.css">
 </head>
 <body>
   <header>
     <nav>
-      <div class="logo">Origyn</div>
+      <a class="logo" href="#home" aria-label="Origyn Publisher home">Origyn</a>
       <div class="nav-links">
         <a href="#home">Home</a>
+        <a href="#story">Story</a>
+        <a href="#sell">How It Works</a>
         <a href="#publish">Publish</a>
-        <a href="#how-it-works">How It Works</a>
         <a href="#about">About</a>
         <a href="#contact">Contact</a>
       </div>
     </nav>
   </header>
 
+  <div class="page-guide" aria-label="Page navigation">
+    <button class="guide-dot active" data-target="#home" aria-label="Go to Home"><span>01</span></button>
+    <button class="guide-dot" data-target="#story" aria-label="Go to Story"><span>02</span></button>
+    <button class="guide-dot" data-target="#sell" aria-label="Go to How It Works"><span>03</span></button>
+    <button class="guide-dot" data-target="#publish" aria-label="Go to Publish"><span>04</span></button>
+    <button class="guide-dot" data-target="#about" aria-label="Go to About"><span>05</span></button>
+    <button class="guide-dot" data-target="#contact" aria-label="Go to Contact"><span>06</span></button>
+  </div>
+
   <main>
     <section id="home">
+      <p class="hero-kicker">ORIGYN PUBLISHER</p>
       <h1>Publish what you built.</h1>
       <p>Origyn gives creators, sellers and innovators a place to put their products in front of customers.</p>
       <div class="hero-buttons">
-        <button id="publish-btn" type="button">Publish a Product</button>
-        <button id="learn-btn" type="button">How It Works</button>
+        <button id="publish-btn" class="hero-primary" type="button">Publish a Product <span>↓</span></button>
+        <button id="learn-btn" class="hero-secondary" type="button">See How It Works <span>→</span></button>
       </div>
     </section>
 
@@ -44,6 +56,7 @@
             <div class="tech-item">IoT</div>
           </div>
         </div>
+        <button class="section-guide" data-target="#sell" type="button">Continue <span>↓</span></button>
       </div>
     </section>
 
@@ -52,13 +65,14 @@
         <p class="section-label">FOR PUBLISHERS</p>
         <h2>You build it.<br>We help you sell it.</h2>
         <p>Publish technology, digital products or products from almost any category. Technology is our specialty, but Origyn is built for a much bigger market.</p>
-        <button id="start-selling-btn" type="button">Start Publishing</button>
+        <button id="start-selling-btn" type="button">Start Publishing <span>→</span></button>
       </div>
       <div class="sell-steps" id="how-it-works">
         <div class="sell-step"><span>01</span><h3>Create</h3><p>Describe your product, choose its category and tell customers what makes it valuable.</p></div>
         <div class="sell-step"><span>02</span><h3>Preview</h3><p>See how your listing will appear before anything is submitted to the marketplace.</p></div>
         <div class="sell-step"><span>03</span><h3>Publish</h3><p>Submit your listing to Origyn. Orders, commissions and digital access will be handled through the platform.</p></div>
       </div>
+      <button class="section-guide" data-target="#publish" type="button">Go to Publisher <span>↓</span></button>
     </section>
 
     <section id="publish">
@@ -148,7 +162,7 @@
           </div>
 
           <div class="preview-card">
-            <div class="preview-image" id="preview-image">PRODUCT</div>
+            <div class="preview-image" id="preview-image"><span>PRODUCT</span><small>ORIGYN</small></div>
             <div class="preview-content">
               <p id="preview-category">CATEGORY · TYPE</p>
               <h3 id="preview-name">Your Product</h3>
@@ -169,8 +183,9 @@
       <div class="listing-process">
         <div class="process-step"><span>01</span><div><h4>Create</h4><p>Choose from the full Origyn category system.</p></div></div>
         <div class="process-step"><span>02</span><div><h4>Preview</h4><p>Review your product and estimated commission.</p></div></div>
-        <div class="process-step"><span>03</span><div><h4>Publish</h4><p>Submit it to Origyn once the API is connected.</p></div></div>
+        <div class="process-step"><span>03</span><div><h4>Publish</h4><p>Submit your listing to Origyn once the API is connected.</p></div></div>
       </div>
+      <button class="section-guide dark-guide" data-target="#about" type="button">Continue to About <span>↓</span></button>
     </section>
 
     <section id="about">
@@ -187,6 +202,7 @@
         <div class="about-stat"><span>02</span><h3>Reach</h3><p>Put your product in front of customers through the Origyn Store.</p></div>
         <div class="about-stat"><span>03</span><h3>Grow</h3><p>Build a product presence while Origyn handles the marketplace layer.</p></div>
       </div>
+      <button class="section-guide" data-target="#contact" type="button">Contact Origyn <span>↓</span></button>
     </section>
 
     <section id="contact">
@@ -196,6 +212,7 @@
         <p>Tell us about your product, technology or idea.</p>
         <a class="contact-button" href="mailto:hello@origyn.com">Talk to Origyn →</a>
       </div>
+      <button class="back-top" data-target="#home" type="button">Back to top ↑</button>
     </section>
   </main>
 
