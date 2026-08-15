@@ -169,16 +169,31 @@ header .nav-links a:hover {
   overflow: hidden;
 }
 
+/* Rupee prefix: use a dedicated Unicode-capable font so ₹ renders cleanly. */
 #product-form .input-prefix > span {
-  padding-left: 16px;
-  color: #555;
-  font-size: 15px;
-  font-weight: 700;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  padding: 0 !important;
+  color: #111 !important;
+  font-family: "Noto Sans", "Segoe UI Symbol", "Arial Unicode MS", sans-serif !important;
+  font-size: 17px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  font-variant: normal !important;
+  font-feature-settings: normal !important;
+  transform: none !important;
 }
 
 #product-form .input-prefix input {
+  flex: 1 1 auto;
+  min-width: 0;
   min-height: 50px;
+  padding: 14px 16px 14px 4px !important;
   border: 0 !important;
+  border-radius: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
 }
