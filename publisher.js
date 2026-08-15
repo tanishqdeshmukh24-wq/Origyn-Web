@@ -2,11 +2,6 @@
 document.addEventListener("DOMContentLoaded", () => {
   "use strict";
 
-  const publisherStyles = document.createElement("link");
-  publisherStyles.rel = "stylesheet";
-  publisherStyles.href = "publisher.css";
-  document.head.appendChild(publisherStyles);
-
   const $ = (selector) => document.querySelector(selector);
   const money = (value) => `₹${Number(value || 0).toLocaleString("en-IN")}`;
 
@@ -36,6 +31,23 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  document.querySelectorAll("[data-target]").forEach(button => {
+    button.addEventListener("click", () => scrollToSection(button.dataset.target.replace("#", "")));
+  });
+
+  const guideDots = [...document.querySelectorAll(".guide-dot")];
+  const sections = ["home", "story", "sell", "publish", "about", "contact"].map(id => document.getElementById(id)).filter(Boolean);
+
+  if ("IntersectionObserver" in window) {
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        guideDots.forEach(dot => dot.classList.toggle("active", dot.dataset.target === `#${entry.target.id}`));
+      });
+    }, { rootMargin: "-35% 0px -55% 0px", threshold: 0 });
+    sections.forEach(section => observer.observe(section));
+  }
+
   $("#publish-btn")?.addEventListener("click", () => scrollToSection("publish"));
   $("#start-selling-btn")?.addEventListener("click", () => scrollToSection("publish"));
   $("#learn-btn")?.addEventListener("click", () => scrollToSection("how-it-works"));
@@ -58,7 +70,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const data = readForm();
     if (!data) return null;
     currentListing = data;
-    $("#preview-image").textContent = data.image;
+    const previewImage = $("#preview-image");
+    const imageLabel = previewImage?.querySelector("span");
+    if (imageLabel) imageLabel.textContent = data.image;
     $("#preview-category").textContent = `${data.categoryLabel.toUpperCase()} · ${data.typeLabel.toUpperCase()}`;
     $("#preview-name").textContent = data.name;
     $("#preview-description").textContent = data.description;
