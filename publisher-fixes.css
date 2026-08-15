@@ -1,5 +1,4 @@
 /* ORIGYN PUBLISHER — visual fixes for navigation, branding and listing form */
-
 header .logo, header .logo:visited, header .logo:hover { color:#111 !important; text-decoration:none !important; opacity:1 !important; visibility:visible !important; }
 header { background:rgba(255,255,255,.92) !important; border-bottom:1px solid rgba(17,17,17,.06); }
 header .nav-links, header .nav-links a { opacity:1 !important; visibility:visible !important; }
@@ -27,8 +26,6 @@ header .nav-links a:hover { color:var(--accent) !important; opacity:1 !important
 #product-form .input-prefix > span { position:absolute !important; left:16px !important; top:50% !important; width:auto !important; height:auto !important; padding:0 !important; margin:0 !important; display:block !important; transform:translateY(-50%) !important; color:#111 !important; font-family:"Noto Sans","Segoe UI Symbol","Arial Unicode MS",sans-serif !important; font-size:17px !important; font-weight:700 !important; line-height:1 !important; text-align:left !important; }
 #product-form .input-prefix input { display:block !important; width:100% !important; min-width:0; min-height:50px; margin:0 !important; padding:14px 16px 14px 42px !important; border:0 !important; border-radius:0 !important; background:transparent !important; box-shadow:none !important; }
 #product-form .input-prefix:focus-within { border-color:#111; background:#fff; box-shadow:0 0 0 3px rgba(17,17,17,.07); }
-
-/* Product image upload */
 .product-image-field { margin-top:2px !important; }
 .image-upload-box { min-height:82px; display:flex !important; flex-direction:row !important; align-items:center; gap:16px; padding:16px 18px; border:1.5px dashed #cfcfcf; border-radius:14px; background:#fafafa; cursor:pointer; transition:border-color .2s ease,background .2s ease,transform .2s ease; text-transform:none !important; letter-spacing:0 !important; font-size:14px !important; }
 .image-upload-box:hover { border-color:#111; background:#fff; transform:translateY(-1px); }
@@ -36,13 +33,20 @@ header .nav-links a:hover { color:var(--accent) !important; opacity:1 !important
 .image-upload-box small { display:block; margin-top:4px; color:#888; font-size:11px; font-weight:500; }
 .image-upload-icon { width:38px; height:38px; flex:0 0 38px; display:grid; place-items:center; border:1px solid #ddd; border-radius:10px; background:#fff; color:#111; font-size:23px; line-height:1; }
 .visually-hidden-input { position:absolute !important; width:1px !important; height:1px !important; padding:0 !important; margin:-1px !important; overflow:hidden !important; clip:rect(0,0,0,0) !important; white-space:nowrap !important; border:0 !important; }
-
+.image-thumbnails { display:flex; flex-wrap:wrap; gap:9px; margin-top:10px; }
+.image-thumb { position:relative; width:58px; height:58px; padding:0; border:2px solid transparent; border-radius:10px; overflow:hidden; background:#f1f1f1; cursor:pointer; }
+.image-thumb.active { border-color:#111; }
+.image-thumb img { width:100%; height:100%; display:block; object-fit:cover; }
+.image-thumb span { position:absolute; left:4px; bottom:4px; padding:2px 5px; border-radius:4px; background:rgba(17,17,17,.78); color:#fff; font:700 8px/1 Arial,sans-serif; }
 #product-form .listing-action.primary { width:100%; min-height:58px; margin-top:4px; font-size:15px; letter-spacing:-.1px; }
 .listing-preview-panel { padding:34px !important; }
 .listing-preview-panel .panel-top h3 { font-size:21px !important; font-weight:800 !important; }
 .preview-card { border-radius:22px !important; border-color:#dedede !important; }
-.preview-image { min-height:230px !important; background-size:cover !important; background-position:center !important; background-repeat:no-repeat !important; }
+.preview-image { min-height:230px !important; background-size:cover !important; background-position:center !important; background-repeat:no-repeat !important; position:relative !important; overflow:hidden !important; }
 .preview-image.has-product-image::before { display:none !important; }
 .preview-image.has-product-image span,.preview-image.has-product-image small { display:none !important; }
-
+.gallery-arrow { position:absolute; top:50%; transform:translateY(-50%); z-index:3; width:36px; height:36px; border:1px solid rgba(255,255,255,.6); border-radius:50%; background:rgba(17,17,17,.62); color:#fff; font-size:26px; line-height:30px; cursor:pointer; backdrop-filter:blur(5px); }
+.gallery-arrow.prev { left:12px; }.gallery-arrow.next { right:12px; }.gallery-arrow[hidden] { display:none; }
+.gallery-dots { position:absolute; left:50%; bottom:12px; transform:translateX(-50%); display:flex; gap:6px; z-index:3; padding:5px 8px; border-radius:20px; background:rgba(17,17,17,.45); }
+.gallery-dot { width:7px; height:7px; padding:0; border:0; border-radius:50%; background:rgba(255,255,255,.55); cursor:pointer; }.gallery-dot.active { background:#fff; transform:scale(1.25); }
 @media (max-width:900px) { #product-form .form-row { grid-template-columns:1fr !important; } .listing-form-panel { padding:28px !important; } }
