@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     if(!info.querySelector('.review-preview')){
       const preview=document.createElement('div');
       preview.className='review-preview';
-      preview.innerHTML='<strong>What shoppers are saying</strong><p>Reviews will be collected from verified purchases once accounts and the common API are connected.</p><button type="button">View all reviews →</button>';
+      preview.innerHTML='<strong>What shoppers are saying</strong><p>Reviews will be collected from verified purchases once accounts and the common API are connected.</p><button type="button" class="review-cta">View all reviews <span>→</span></button>';
       rating.insertAdjacentElement('afterend',preview);
     }
     if(!info.querySelector('.related-preview')){
@@ -18,9 +18,10 @@ document.addEventListener('DOMContentLoaded',()=>{
       if(names.length){
         const related=document.createElement('div');
         related.className='related-preview';
-        related.innerHTML='<div class="related-title"><strong>You may also like</strong><span>Based on this product</span></div><div class="related-chips">'+names.map(n=>'<button type="button" data-related="'+n.replace(/"/g,'&quot;')+'">'+n+'</button>').join('')+'</div>';
+        related.innerHTML='<div class="related-title"><strong>You may also like</strong><span>Based on this product</span></div><div class="related-chips">'+names.map(n=>'<button type="button" data-related="'+n.replace(/"/g,'&quot;')+'">'+n+'</button>').join('')+'</div><button type="button" class="similar-cta">View similar products <span>→</span></button>';
         info.appendChild(related);
         related.addEventListener('click',e=>{const b=e.target.closest('[data-related]');if(!b)return;const target=[...document.querySelectorAll('.product-card h3')].find(x=>x.textContent.trim()===b.dataset.related);if(target){modal.classList.remove('open');target.closest('.product-card')?.querySelector('[data-view]')?.click();}});
+        related.querySelector('.similar-cta').addEventListener('click',()=>{modal.classList.remove('open');document.querySelector('#discover')?.scrollIntoView({behavior:'smooth',block:'start'});});
       }
     }
   };
