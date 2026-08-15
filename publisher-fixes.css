@@ -1,6 +1,5 @@
 /* ORIGYN PUBLISHER — visual fixes for navigation, branding and listing form */
 
-/* Keep the Origyn wordmark and navigation visible and intentional. */
 header .logo,
 header .logo:visited,
 header .logo:hover {
@@ -32,7 +31,6 @@ header .nav-links a:hover {
   opacity: 1 !important;
 }
 
-/* The fixed section navigator must remain visible over every section. */
 .page-guide {
   z-index: 2000 !important;
 }
@@ -53,7 +51,6 @@ header .nav-links a:hover {
   border-color: #111 !important;
 }
 
-/* Bring the publish heading back to the bold Origyn scale. */
 #publish .submit-header {
   max-width: 1100px;
 }
@@ -72,7 +69,6 @@ header .nav-links a:hover {
   color: #111 !important;
 }
 
-/* The product-creation card: polished, spacious and consistent with the older Origyn form. */
 .listing-form-panel,
 .listing-preview-panel {
   border: 1px solid #e1e1e1 !important;
@@ -159,9 +155,10 @@ header .nav-links a:hover {
   line-height: 1.55;
 }
 
+/* Selling-price field: the rupee symbol is a true left-side prefix, vertically centered. */
 #product-form .input-prefix {
-  display: flex;
-  align-items: center;
+  position: relative !important;
+  display: block !important;
   min-height: 52px;
   border: 1px solid #d9d9d9;
   border-radius: 12px;
@@ -169,14 +166,16 @@ header .nav-links a:hover {
   overflow: hidden;
 }
 
-/* Rupee prefix: use a dedicated Unicode-capable font so ₹ renders cleanly. */
 #product-form .input-prefix > span {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
+  position: absolute !important;
+  left: 16px !important;
+  top: 50% !important;
+  width: auto !important;
+  height: auto !important;
   padding: 0 !important;
+  margin: 0 !important;
+  display: block !important;
+  transform: translateY(-50%) !important;
   color: #111 !important;
   font-family: "Noto Sans", "Segoe UI Symbol", "Arial Unicode MS", sans-serif !important;
   font-size: 17px !important;
@@ -184,14 +183,16 @@ header .nav-links a:hover {
   line-height: 1 !important;
   font-variant: normal !important;
   font-feature-settings: normal !important;
-  transform: none !important;
+  text-align: left !important;
 }
 
 #product-form .input-prefix input {
-  flex: 1 1 auto;
+  display: block !important;
+  width: 100% !important;
   min-width: 0;
   min-height: 50px;
-  padding: 14px 16px 14px 4px !important;
+  margin: 0 !important;
+  padding: 14px 16px 14px 42px !important;
   border: 0 !important;
   border-radius: 0 !important;
   background: transparent !important;
@@ -212,7 +213,6 @@ header .nav-links a:hover {
   letter-spacing: -0.1px;
 }
 
-/* Give the live preview the same visual weight as the creation panel. */
 .listing-preview-panel {
   padding: 34px !important;
 }
