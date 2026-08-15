@@ -1,0 +1,22 @@
+/* Commerce-first hierarchy: shoppers reach the catalog before the editorial story. */
+.store-page main{display:flex;flex-direction:column}
+.store-page .store-hero{order:1;min-height:72vh;padding-top:6%;padding-bottom:6%}
+.store-page #discover{order:2;padding-top:105px}
+.store-page #ecosystem{order:3;position:relative}
+.store-page .featured-strip{order:4;position:relative}
+.store-page #categories{order:5;position:relative}
+.store-page .trust-section{order:6;position:relative}
+.store-page .newsletter{order:7;position:relative}
+.store-page .store-hero .hero-copy h1{font-size:clamp(52px,7vw,105px)}
+.store-page .store-hero .hero-copy>p:not(.eyebrow){font-size:16px;max-width:560px;margin:22px 0}
+.store-page .store-hero .hero-orbit{height:410px}
+.store-page #ecosystem:before{content:'AFTER THE MARKETPLACE';position:absolute;top:0;left:8%;font-size:9px;font-weight:900;letter-spacing:3px;color:#aaa}
+.store-page #discover .section-heading{grid-template-columns:1fr;gap:12px;margin-bottom:30px}
+.store-page #discover .section-heading h2{font-size:clamp(48px,6vw,82px)}
+.store-page #discover .section-heading>p{max-width:650px}
+.store-page #discover .section-heading:after{margin-top:2px!important}
+.store-page #store-grid{min-height:400px}
+/* The catalog is the destination; everything after it supports discovery, trust and brand context. */
+.store-page #discover .search-panel{scroll-margin-top:90px}
+.store-page #ecosystem{scroll-margin-top:90px}
+@media(max-width:650px){.store-page .store-hero{min-height:68vh;padding-top:80px;padding-bottom:70px}.store-page .store-hero .hero-copy h1{font-size:clamp(48px,14vw,72px)}.store-page #discover{padding-top:75px}.store-page #store-grid{min-height:330px}}
