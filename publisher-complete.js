@@ -47,6 +47,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
   form.insertBefore(panel, imageField || form.lastElementChild);
 
+  // Keep the disabled Shipping state visually consistent even if an older stylesheet
+  // does not define .is-disabled yet.
+  if (!document.getElementById("origyn-shipping-state-style")) {
+    const style = document.createElement("style");
+    style.id = "origyn-shipping-state-style";
+    style.textContent = `
+      #shipping-block { transition: opacity .2s ease, filter .2s ease; }
+      #shipping-block.is-disabled { opacity: .48; filter: saturate(.45); }
+      #shipping-block.is-disabled input,
+      #shipping-block.is-disabled select { cursor: not-allowed; }
+      #shipping-block:not(.is-disabled) { opacity: 1; filter: none; }
+    `;
+    document.head.appendChild(style);
+  }
+
   const variantList = $("#variant-list");
   let variants = [];
   let saved = null;
@@ -64,23 +79,34 @@ document.addEventListener("DOMContentLoaded", () => {
     const digital = ["digital", "software", "ai_model", "dataset", "api"].includes(type.value);
     const delivery = $("#delivery-method");
     const shipping = $("#shipping-block");
-    const selectedDelivery = delivery?.value || "shipping";
+    const selectedDelivery = delivery?.value || "";
+    const shippingSelected = selectedDelivery === "shipping";
 
-    // Shipping is a usable section, never a greyed-out/dead control.
-    // Its fields are relevant when Ship to customer is selected, but remain editable
-    // so the publisher can complete the listing before changing delivery mode.
-    shipping?.classList.remove("is-disabled");
-    shipping?.setAttribute("aria-disabled", "false");
-    shipping?.querySelectorAll("input, select").forEach(el => { el.disabled = false; });
+    // Shipping is available ONLY for the Ship to customer delivery method.
+    // Selecting Ship to customer activates the section; all other fulfilment
+    // methods keep it visibly dimmed and prevent editing its fields.
+    shipping?.classList.toggle("is-disabled", !shippingSelected);
+    shipping?.setAttribute("aria-disabled", String(!shippingSelected));
+    shipping?.querySelectorAll("input, select").forEach(el => {
+      el.disabled = !shippingSelected;
+    });
 
     $("#stock-mode").value = physical ? "limited" : "unlimited";
     $("#stock-quantity").disabled = !physical;
     if (!physical) $("#stock-quantity").value = "";
 
     // Only choose a default delivery method when the current value is empty.
-    // This prevents the user's manual selection from being overwritten.
-    if (!delivery.value) delivery.value = physical ? "shipping" : (type.value === "api" ? "api" : digital ? "account" : "service");
-    $("#delivery-block").classList.toggle("digital-highlight", digital && selectedDelivery !== "shipping");
+    // This prevents a manual delivery selection from being overwritten.
+    if (!delivery.value) {
+      delivery.value = physical ? "shipping" : (type.value === "api" ? "api" : digital ? "account" : "service");
+      // Re-evaluate immediately after assigning the default.
+      const defaultShippingSelected = delivery.value === "shipping";
+      shipping?.classList.toggle("is-disabled", !defaultShippingSelected);
+      shipping?.setAttribute("aria-disabled", String(!defaultShippingSelected));
+      shipping?.querySelectorAll("input, select").forEach(el => { el.disabled = !defaultShippingSelected; });
+    }
+
+    $("#delivery-block").classList.toggle("digital-highlight", digital && delivery.value !== "shipping");
   }
 
   type.addEventListener("change", refreshConditionalFields);
