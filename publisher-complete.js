@@ -4,7 +4,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const form = $("#product-form");
   if (!form) return;
 
-  const category = $("#product-category");
   const type = $("#product-type");
   const imageField = $(".product-image-field");
 
@@ -50,10 +49,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const variantList = $("#variant-list");
   let variants = [];
-  const saved = JSON.parse(localStorage.getItem("origynPublisherDraft") || "null");
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem("origynPublisherDraft") || "null"); } catch (_) { saved = null; }
 
   function renderVariants() {
-    variantList.innerHTML = variants.map((v, i) => `<div class="variant-row"><input data-variant-name="${i}" value="${v.name}" placeholder="Option name (e.g. Color)"><input data-variant-values="${i}" value="${v.values}" placeholder="Values (e.g. Black, White)"><button type="button" data-remove-variant="${i}" aria-label="Remove variant">×</button></div>`).join("");
+    variantList.innerHTML = variants.map((v, i) => `<div class="variant-row"><input data-variant-name="${i}" value="${v.name || ""}" placeholder="Option name (e.g. Color)"><input data-variant-values="${i}" value="${v.values || ""}" placeholder="Values (e.g. Black, White)"><button type="button" data-remove-variant="${i}" aria-label="Remove variant">×</button></div>`).join("");
   }
   $("#add-variant").addEventListener("click", () => { variants.push({ name: "", values: "" }); renderVariants(); variantList.lastElementChild?.querySelector("input")?.focus(); });
   variantList.addEventListener("input", e => { const i = Number(e.target.dataset.variantName ?? e.target.dataset.variantValues); if (!Number.isInteger(i) || !variants[i]) return; if (e.target.dataset.variantName !== undefined) variants[i].name = e.target.value; else variants[i].values = e.target.value; });
@@ -62,14 +62,29 @@ document.addEventListener("DOMContentLoaded", () => {
   function refreshConditionalFields() {
     const physical = type.value === "physical";
     const digital = ["digital", "software", "ai_model", "dataset", "api"].includes(type.value);
-    $("#shipping-block").classList.toggle("is-disabled", !physical);
+    const delivery = $("#delivery-method");
+    const shipping = $("#shipping-block");
+    const selectedDelivery = delivery?.value || "shipping";
+
+    // Shipping is a usable section, never a greyed-out/dead control.
+    // Its fields are relevant when Ship to customer is selected, but remain editable
+    // so the publisher can complete the listing before changing delivery mode.
+    shipping?.classList.remove("is-disabled");
+    shipping?.setAttribute("aria-disabled", "false");
+    shipping?.querySelectorAll("input, select").forEach(el => { el.disabled = false; });
+
     $("#stock-mode").value = physical ? "limited" : "unlimited";
     $("#stock-quantity").disabled = !physical;
     if (!physical) $("#stock-quantity").value = "";
-    $("#delivery-method").value = physical ? "shipping" : (type.value === "api" ? "api" : digital ? "account" : "service");
-    $("#delivery-block").classList.toggle("digital-highlight", digital);
+
+    // Only choose a default delivery method when the current value is empty.
+    // This prevents the user's manual selection from being overwritten.
+    if (!delivery.value) delivery.value = physical ? "shipping" : (type.value === "api" ? "api" : digital ? "account" : "service");
+    $("#delivery-block").classList.toggle("digital-highlight", digital && selectedDelivery !== "shipping");
   }
+
   type.addEventListener("change", refreshConditionalFields);
+  $("#delivery-method").addEventListener("change", refreshConditionalFields);
   $("#stock-mode").addEventListener("change", e => { $("#stock-quantity").disabled = e.target.value === "unlimited"; });
 
   function draftData() {
@@ -91,7 +106,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   $("#save-draft").addEventListener("click", () => { localStorage.setItem("origynPublisherDraft", JSON.stringify(draftData())); $("#draft-status").textContent = "Saved just now"; });
 
-  const originalSubmit = form.querySelector("button[type=submit]");
   form.addEventListener("submit", e => {
     if (!$("#terms-confirm").checked) {
       e.preventDefault();
@@ -108,7 +122,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     const status = $("#publish-status");
-    if (status) status.textContent = "Listing is complete and ready for API submission. Images, variants, inventory, delivery and seller policy are prepared.";
+    if (status) status.textContent = "Listing is complete and ready for API submission. Images, variants, inventory, delivery, shipping and seller policy are prepared.";
     status?.classList.add("visible");
   }, true);
 
