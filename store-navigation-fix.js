@@ -11,17 +11,28 @@ document.addEventListener('DOMContentLoaded',()=>{
   };
   const resetSearch=()=>{
     const input=document.querySelector('#store-search');
-    if(input&&input.value){input.value='';input.dispatchEvent(new Event('input',{bubbles:true}));}
+    if(input){input.value='';input.dispatchEvent(new Event('input',{bubbles:true}));}
     const top=document.querySelector('#top-search');
     if(top)top.value='';
   };
-  const goToProducts=()=>{resetSearch();setTimeout(showProducts,80)};
+  const browseProducts=()=>{
+    resetSearch();
+    // Store's wishlist handler owns savedView. If we are currently in Saved,
+    // trigger the same control once to leave Saved mode, then position on cards.
+    const wish=document.querySelector('#wishlist-open');
+    if(wish&&typeof wish.click==='function')wish.click();
+    setTimeout(()=>{
+      // If the Store handler did not toggle the view, force the UI back to normal
+      // through the public navigation control rather than relying on private state.
+      const savedEmpty=document.querySelector('#browse-saved-products');
+      if(savedEmpty) return;
+      showProducts();
+    },350);
+  };
 
   document.querySelectorAll('.store-nav-links a').forEach(link=>{
     const href=link.getAttribute('href');
-    if(href==='#store-grid'||href==='#discover'){
-      link.addEventListener('click',e=>{e.preventDefault();goToProducts();});
-    }
+    if(href==='#store-grid'||href==='#discover')link.addEventListener('click',e=>{e.preventDefault();browseProducts();});
   });
 
   document.addEventListener('click',e=>{
@@ -32,42 +43,29 @@ document.addEventListener('DOMContentLoaded',()=>{
     const saved=e.target.closest('#wishlist-open');
     const emptyBrowse=e.target.closest('#browse-saved-products');
     const similar=e.target.closest('.similar-cta');
-    const related=e.target.closest('.related-product-name');
 
     if(emptyBrowse){
       e.preventDefault();
-      const wish=document.querySelector('#wishlist-open');
-      if(wish) wish.dataset.returning='1';
-      resetSearch();
-      setTimeout(()=>{
-        // The main Store script owns savedView; clicking Saved again restores normal browsing.
-        if(wish) wish.click();
-        setTimeout(showProducts,120);
-      },60);
+      e.stopImmediatePropagation();
+      browseProducts();
       return;
     }
-    if(category||filter||shop||browse||saved){setTimeout(showProducts,260);}
-    if(similar){setTimeout(showProducts,320);}
-    if(related){setTimeout(()=>document.querySelector('#product-modal')?.classList.add('open'),20);}
+    if(category||filter||shop||browse||saved)setTimeout(showProducts,260);
+    if(similar)setTimeout(showProducts,320);
   },true);
 
   document.querySelectorAll('footer a[href="#home"],.store-page .logo[href="#home"]').forEach(link=>{
-    link.addEventListener('click',e=>{
-      e.preventDefault();window.scrollTo({top:0,behavior:'smooth'});
-    });
+    link.addEventListener('click',e=>{e.preventDefault();window.scrollTo({top:0,behavior:'smooth'});});
   });
 
-  // Prevent hash navigation from landing beneath the sticky header.
   grid.style.scrollMarginTop=`${header()+18}px`;
   discover.style.scrollMarginTop=`${header()+18}px`;
 
-  // Ensure the cart is closed with Escape and never leaves the page locked.
   const cart=document.querySelector('#cart');
   document.addEventListener('keydown',e=>{
     if(e.key==='Escape'&&cart?.classList.contains('open'))cart.classList.remove('open');
   });
 
-  // External/decorative controls should never appear clickable without behavior.
   document.querySelectorAll('.ecosystem-card').forEach(card=>{
     card.setAttribute('tabindex','0');
     card.setAttribute('role','button');
