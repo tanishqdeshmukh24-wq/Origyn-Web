@@ -12,6 +12,12 @@ const productRoutes = require('./src/routes/products');
 const categoryRoutes = require('./src/routes/categories');
 const publisherRoutes = require('./src/routes/publishers');
 const meRoutes = require('./src/routes/me');
+const cartRoutes = require('./src/routes/cart');
+const wishlistRoutes = require('./src/routes/wishlist');
+const reviewRoutes = require('./src/routes/reviews');
+const orderRoutes = require('./src/routes/orders');
+const paymentRoutes = require('./src/routes/payments');
+const eventRoutes = require('./src/routes/events');
 
 if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required');
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) throw new Error('JWT_SECRET must be at least 32 characters');
@@ -30,8 +36,6 @@ app.get('/', (_req, res) => res.json({ message: 'Origyn backend is running!', ve
 app.get('/api/health', async (_req, res, next) => {
   try { await pool.query('SELECT 1'); res.json({ status: 'ok' }); } catch (error) { next(error); }
 });
-
-// Legacy compatibility only. New marketplace integrations must use /api/products.
 app.get('/api/technologies', async (_req, res, next) => {
   try { const result = await pool.query('SELECT * FROM technologies ORDER BY id DESC'); res.json(result.rows); }
   catch (error) { next(error); }
@@ -42,6 +46,12 @@ app.use('/api/products', productRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/publishers', publisherRoutes);
 app.use('/api/me', meRoutes);
+app.use('/api/cart', cartRoutes);
+app.use('/api/wishlist', wishlistRoutes);
+app.use('/api', reviewRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/commerce-events', eventRoutes);
 
 app.use((_req, res) => res.status(404).json({ error: 'Route not found' }));
 app.use((error, _req, res, _next) => {
