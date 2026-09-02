@@ -35,15 +35,15 @@ async function recordEvent({userId,eventType,productId=null,categoryId=null,orde
 }
 
 async function checkout(client,userId,shippingAddress,idempotencyKey){
+  // Serialize checkout attempts for the same user/idempotency key. The database
+  // advisory lock closes the race that can occur before the unique order index
+  // is reached, while remaining transaction-scoped and requiring no app state.
   if(idempotencyKey){
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [`${userId}:${idempotencyKey}`]);
     const existing=await client.query('SELECT id FROM orders WHERE customer_id=$1 AND idempotency_key=$2',[userId,idempotencyKey]);
     if(existing.rowCount) return getOrder(client,userId,existing.rows[0].id);
   }
   const cart=await client.query('SELECT * FROM cart_items WHERE user_id=$1 ORDER BY created_at FOR UPDATE',[userId]);
-  if(idempotencyKey){
-    const existing=await client.query('SELECT id FROM orders WHERE customer_id=$1 AND idempotency_key=$2',[userId,idempotencyKey]);
-    if(existing.rowCount) return getOrder(client,userId,existing.rows[0].id);
-  }
   if(!cart.rowCount) throw httpError('Cart is empty',400);
   let total=0,currency=null,needsShipping=false;
   const prepared=[];
