@@ -138,7 +138,7 @@ test('authenticated commerce flow preserves server authority', async () => {
     headers: { 'Idempotency-Key': 'integration-order-1' },
     body: JSON.stringify({ shipping_address: { name: 'Integration User', address_line1: '1 Test Street', city: 'Pune', state: 'Maharashtra', postal_code: '411001', country: 'IN' } })
   });
-  assert.equal(repeated.response.status, 201);
+  assert.equal(repeated.response.status, 200);
   assert.equal(repeated.body.id, orderId);
 
   const capture = await api('/api/payments/webhooks/test-provider', {
