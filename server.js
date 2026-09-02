@@ -30,7 +30,19 @@ app.set('trust proxy', 1);
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors({ origin(origin, callback) { if (!origin || allowedOrigins.includes(origin)) return callback(null, true); callback(new Error('Origin not allowed by CORS')); } }));
 app.use(express.json({ limit: '1mb' }));
-app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, limit: 100, standardHeaders: 'draft-8', legacyHeaders: false }));
+
+const authRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, limit: 100, standardHeaders: 'draft-8', legacyHeaders: false });
+const commerceRateLimit = rateLimit({ windowMs: 60 * 1000, limit: 120, standardHeaders: 'draft-8', legacyHeaders: false });
+const webhookRateLimit = rateLimit({ windowMs: 60 * 1000, limit: 60, standardHeaders: 'draft-8', legacyHeaders: false });
+
+app.use('/api/auth', authRateLimit);
+app.use('/api/cart', commerceRateLimit);
+app.use('/api/wishlist', commerceRateLimit);
+app.use('/api/orders', commerceRateLimit);
+app.use('/api/payments', commerceRateLimit);
+app.use('/api/commerce-events', commerceRateLimit);
+app.use('/api/payments/webhooks', webhookRateLimit);
+app.use('/api', reviewRoutes);
 
 app.get('/', (_req, res) => res.json({ message: 'Origyn backend is running!', version: '1.0' }));
 app.get('/api/health', async (_req, res, next) => {
@@ -48,7 +60,6 @@ app.use('/api/publishers', publisherRoutes);
 app.use('/api/me', meRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/wishlist', wishlistRoutes);
-app.use('/api', reviewRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/commerce-events', eventRoutes);
