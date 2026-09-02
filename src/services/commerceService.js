@@ -76,7 +76,11 @@ async function finalizeCapturedPayment(client,orderId,providerPaymentId=null,pro
   if(!paymentResult.rowCount) throw httpError('Payment not found',404);
   const payment=paymentResult.rows[0];
   if(payment.status==='captured'||order.payment_status==='paid') return {alreadyFinalized:true};
-  const items=await client.query(`SELECT oi.id,oi.product_id,oi.variant_id,oi.quantity,p.product_type,p.stock,v.stock_mode,v.stock_quantity FROM order_items oi JOIN products p ON p.id=oi.product_id LEFT JOIN product_variants v ON v.id=oi.variant_id WHERE oi.order_id=$1 FOR UPDATE`,[orderId]);
+  // Do not use FOR UPDATE on this LEFT JOIN: PostgreSQL rejects row locks that
+  // include the nullable side of an outer join. Inventory decrements below are
+  // conditional atomic UPDATEs, and the order/payment locks above serialize
+  // payment finalization for this order.
+  const items=await client.query(`SELECT oi.id,oi.product_id,oi.variant_id,oi.quantity,p.product_type,p.stock,v.stock_mode,v.stock_quantity FROM order_items oi JOIN products p ON p.id=oi.product_id LEFT JOIN product_variants v ON v.id=oi.variant_id WHERE oi.order_id=$1`,[orderId]);
   for(const item of items.rows){
     if(item.product_type!=='physical'){
       await client.query(`INSERT INTO entitlements(customer_id,product_id,order_item_id,access_data) VALUES($1,$2,$3,$4::jsonb) ON CONFLICT (order_item_id) DO NOTHING`,[order.customer_id,item.product_id,item.id,JSON.stringify({fulfilment:fulfilmentFor(item)})]);
