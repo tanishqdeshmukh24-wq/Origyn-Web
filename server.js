@@ -40,9 +40,8 @@ app.use('/api/cart', commerceRateLimit);
 app.use('/api/wishlist', commerceRateLimit);
 app.use('/api/orders', commerceRateLimit);
 app.use('/api/payments', commerceRateLimit);
-app.use('/api/commerce-events', commerceRateLimit);
 app.use('/api/payments/webhooks', webhookRateLimit);
-app.use('/api', reviewRoutes);
+app.use('/api/commerce-events', commerceRateLimit);
 
 app.get('/', (_req, res) => res.json({ message: 'Origyn backend is running!', version: '1.0' }));
 app.get('/api/health', async (_req, res, next) => {
@@ -60,6 +59,7 @@ app.use('/api/publishers', publisherRoutes);
 app.use('/api/me', meRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/wishlist', wishlistRoutes);
+app.use('/api', reviewRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/commerce-events', eventRoutes);
