@@ -24,8 +24,9 @@ router.post('/items', async (req,res,next)=>{
     const price=currentUnitPrice(product,variant);
     const snapshot={id:product.id,name:product.name,product_type:product.product_type,currency:product.currency,price_paise:price,image:product.primary_image};
     const result=await client.query(`INSERT INTO cart_items(user_id,product_id,variant_id,quantity,unit_price_paise,product_snapshot,variant_snapshot) VALUES($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb) ON CONFLICT (user_id,product_id,COALESCE(variant_id,'00000000-0000-0000-0000-000000000000'::uuid)) DO UPDATE SET quantity=cart_items.quantity+EXCLUDED.quantity,unit_price_paise=EXCLUDED.unit_price_paise,product_snapshot=EXCLUDED.product_snapshot,variant_snapshot=EXCLUDED.variant_snapshot,updated_at=NOW() RETURNING *`,[req.user.id,product_id,variant_id,quantity,price,JSON.stringify(snapshot),variant?JSON.stringify(variant):null]);
+    if (Number(result.rows[0].quantity) > 1000) throw httpError('Cart quantity cannot exceed 1000',409);
     await client.query('COMMIT');
-    await recordEvent({userId:req.user.id,eventType:'cart_item_added',productId,categoryId:product.category_id,metadata:{quantity}});
+    await recordEvent({userId:req.user.id,eventType:'cart_item_added',productId:product_id,categoryId:product.category_id,metadata:{quantity}});
     res.status(201).json(result.rows[0]);
   }catch(e){await client.query('ROLLBACK').catch(()=>{});next(e);}finally{client.release();}
 });
