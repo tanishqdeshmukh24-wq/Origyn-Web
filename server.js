@@ -59,7 +59,7 @@ app.use('/api/publishers', publisherRoutes);
 app.use('/api/me', meRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/wishlist', wishlistRoutes);
-app.use('/api', reviewRoutes);
+app.use('/api', commerceRateLimit, reviewRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/commerce-events', eventRoutes);
