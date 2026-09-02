@@ -27,7 +27,7 @@ router.post('/items', async (req,res,next)=>{
     if (Number(result.rows[0].quantity) > 1000) throw httpError('Cart quantity cannot exceed 1000',409);
     await client.query('COMMIT');
     await recordEvent({userId:req.user.id,eventType:'cart_item_added',productId:product_id,categoryId:product.category_id,metadata:{quantity}});
-    res.status(201).json(result.rows[0]);
+    res.status(201).json(await cartResponse(req.user.id));
   }catch(e){await client.query('ROLLBACK').catch(()=>{});next(e);}finally{client.release();}
 });
 
