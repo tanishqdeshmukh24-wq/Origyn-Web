@@ -175,3 +175,61 @@ test('unauthenticated commerce endpoints reject access', async () => {
   assert.equal(orders.response.status, 401);
   token = previous;
 });
+
+test('concurrent checkout requests with the same idempotency key return one order', async () => {
+  const add = await api('/api/cart/items', {
+    method: 'POST',
+    body: JSON.stringify({ product_id: productId, quantity: 1 })
+  });
+  assert.equal(add.response.status, 201);
+
+  const body = JSON.stringify({ shipping_address: { name: 'Integration User', address_line1: '1 Test Street', city: 'Pune', state: 'Maharashtra', postal_code: '411001', country: 'IN' } });
+  const headers = { 'Idempotency-Key': 'concurrent-order-1' };
+  const [first, second] = await Promise.all([
+    api('/api/orders', { method: 'POST', headers, body }),
+    api('/api/orders', { method: 'POST', headers, body })
+  ]);
+  assert.equal(first.response.status, 201);
+  assert.equal(second.response.status, 200);
+  assert.equal(first.body.id, second.body.id);
+
+  const count = await db.query('SELECT COUNT(*)::int AS count FROM orders WHERE customer_id=$1 AND idempotency_key=$2', [userId, 'concurrent-order-1']);
+  assert.equal(count.rows[0].count, 1);
+});
+
+test('security boundaries reject invalid webhook credentials and cross-user order access', async () => {
+  const badWebhook = await api(`/api/payments/webhooks/test-provider`, {
+    method: 'POST',
+    headers: { 'x-origyn-webhook-secret': 'wrong-secret' },
+    body: JSON.stringify({ order_id: orderId, provider_payment_id: 'invalid-test-payment', status: 'captured' })
+  });
+  assert.equal(badWebhook.response.status, 401);
+
+  const primaryToken = token;
+  const register = await api('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({ email: `other-${crypto.randomUUID()}@example.test`, password: 'Integration123', name: 'Other User' })
+  });
+  assert.equal(register.response.status, 201);
+  token = register.body.token;
+  const forbiddenOrder = await api(`/api/orders/${orderId}`);
+  assert.equal(forbiddenOrder.response.status, 404);
+  token = primaryToken;
+});
+
+test('customer cannot access admin refund endpoint', async () => {
+  const response = await api(`/api/payments/orders/${orderId}/refunds`, {
+    method: 'POST',
+    body: JSON.stringify({ amount_paise: 1000, reason: 'test' })
+  });
+  assert.equal(response.response.status, 403);
+});
+
+test('commerce events reject oversized metadata', async () => {
+  const metadata = { payload: 'x'.repeat(17 * 1024) };
+  const response = await api('/api/commerce-events', {
+    method: 'POST',
+    body: JSON.stringify({ event_type: 'product_viewed', product_id: productId, metadata })
+  });
+  assert.equal(response.response.status, 413);
+});
