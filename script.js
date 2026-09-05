@@ -14,15 +14,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function loadProducts() {
   try {
-    const response = await fetch("http://localhost:5000/api/technologies");
+    const response = await fetch("http://localhost:5000/api/products");
 
     if (!response.ok) {
-      throw new Error("Failed to fetch technologies");
+      throw new Error("Failed to fetch products");
     }
 
     const data = await response.json();
 
-    products = data.map(product => ({
+    products = (data.data || data).map(product => ({
       ...product,
       categoryName:
         categoryNames[product.category] || product.category,
@@ -61,7 +61,7 @@ async function loadProducts() {
   ========================================================= */
   async function loadProducts() {
   try {
-    const response = await fetch("http://localhost:5000/api/technologies");
+    const response = await fetch("http://localhost:5000/api/products");
 
     if (!response.ok) {
       throw new Error(`API error: ${response.status}`);
@@ -69,7 +69,7 @@ async function loadProducts() {
 
     const data = await response.json();
 
-    products = data.map(product => ({
+    products = (data.data || data).map(product => ({
       ...product,
       categoryName:
         product.categoryName ||
@@ -95,10 +95,10 @@ async function loadProducts() {
     refreshFavoriteButtons();
     filterProducts();
 
-    console.log("Technologies loaded from API:", products);
+    console.log("Products loaded from API:", products);
 
   } catch (error) {
-    console.error("Failed to load technologies:", error);
+    console.error("Failed to load products:", error);
   }
 }
 
@@ -267,7 +267,21 @@ async function loadProducts() {
       button.classList.toggle("active", active);
       button.textContent = active ? "♥" : "♡";
     });
-    $("#favorites-count").textContent = favorites.length;
+    function refreshFavoriteButtons() {
+    $$(".favorite-product-btn").forEach(button => {
+        const active = favorites.some(
+            item => item.name === button.dataset.product
+        );
+
+        button.classList.toggle("active", active);
+        button.textContent = active ? "♥" : "♡";
+    });
+
+    const favoritesCount = $("#favorites-count");
+    if (favoritesCount) {
+        favoritesCount.textContent = favorites.length;
+    }
+}
   }
 
   function toggleFavorite(product) {
