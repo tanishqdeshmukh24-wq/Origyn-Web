@@ -130,7 +130,85 @@ document.addEventListener("DOMContentLoaded", () => {
     $("#draft-status").textContent = "Draft restored";
     refreshConditionalFields();
   }
-  $("#save-draft").addEventListener("click", () => { localStorage.setItem("origynPublisherDraft", JSON.stringify(draftData())); $("#draft-status").textContent = "Saved just now"; });
+  $("#save-draft").addEventListener("click", async () => {
+  const token = localStorage.getItem("origynAccessToken");
+
+  if (!token) {
+    $("#draft-status").textContent = "Please log in first";
+    return;
+  }
+
+  const body = {
+    name: $("#product-name").value.trim(),
+    description: $("#product-description").value.trim(),
+    product_type: $("#product-type").value,
+    category_slug: $("#product-category").value,
+    price: Number($("#product-price").value),
+    currency: "INR",
+    images: [],
+    options: [],
+    variants: variants,
+    inventory: {
+      stock_mode: $("#stock-mode").value,
+      stock_quantity: $("#stock-quantity").value
+        ? Number($("#stock-quantity").value)
+        : null
+    },
+    delivery: {
+      method: $("#delivery-method").value,
+      fulfilment_note: $("#delivery-note").value.trim()
+    },
+    shipping: {
+      ships_from: $("#ships-from").value.trim(),
+      processing_time: $("#processing-time").value
+    },
+    policies: {
+      refund_policy: $("#refund-policy").value,
+      seller_rights_confirmed: $("#terms-confirm").checked
+    }
+  };
+
+  $("#draft-status").textContent = "Saving...";
+
+  try {
+    const response = await fetch("http://localhost:5000/api/products", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+      },
+      body: JSON.stringify(body)
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("Save draft error:", data);
+      $("#draft-status").textContent =
+        data.error || "Failed to save draft";
+      return;
+    }
+
+    console.log("Draft created:", data);
+
+    localStorage.setItem(
+      "origynPublisherDraft",
+      JSON.stringify(draftData())
+    );
+
+    localStorage.setItem(
+      "origynCurrentProduct",
+      JSON.stringify(data)
+    );
+
+    $("#draft-status").textContent = "Saved to Origyn ✓";
+
+  } catch (error) {
+    console.error("Save draft error:", error);
+    $("#draft-status").textContent =
+      "Cannot connect to Origyn backend";
+  }
+});
 
   form.addEventListener("submit", e => {
     if (!$("#terms-confirm").checked) {
@@ -141,16 +219,76 @@ document.addEventListener("DOMContentLoaded", () => {
   }, true);
 
   const publishButton = $("#publish-listing-btn");
-  publishButton?.addEventListener("click", () => {
-    if (!$("#terms-confirm").checked) {
-      $("#form-message").textContent = "Confirm your seller rights before preparing this listing.";
-      $("#terms-confirm").focus();
+
+ publishButton?.addEventListener("click", async () => {
+  const token = localStorage.getItem("origynAccessToken");
+  const product = JSON.parse(
+    localStorage.getItem("origynCurrentProduct") || "null"
+  );
+
+  if (!token) {
+    $("#publish-status").textContent = "Please log in first.";
+    return;
+  }
+
+  if (!product?.id) {
+    $("#publish-status").textContent =
+      "Please save your draft before publishing.";
+    return;
+  }
+
+  if (!$("#terms-confirm").checked) {
+    $("#form-message").textContent =
+      "Confirm your seller rights before publishing.";
+    $("#terms-confirm").focus();
+    return;
+  }
+
+  const status = $("#publish-status");
+  status.textContent = "Publishing...";
+
+  try {
+    const response = await fetch(
+      `http://localhost:5000/api/products/${product.id}/publish`,
+      {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer " + token
+        }
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("Publish error:", data);
+
+      const details = Array.isArray(data.details)
+        ? data.details.join(" • ")
+        : "";
+
+      status.textContent =
+        data.error + (details ? `: ${details}` : "");
+
       return;
     }
-    const status = $("#publish-status");
-    if (status) status.textContent = "Listing is complete and ready for API submission. Images, variants, inventory, delivery, shipping and seller policy are prepared.";
-    status?.classList.add("visible");
-  }, true);
+
+    console.log("Published product:", data);
+
+    localStorage.setItem(
+      "origynCurrentProduct",
+      JSON.stringify(data)
+    );
+
+    status.textContent = "Published on Origyn ✓";
+    status.classList.add("visible");
+
+  } catch (error) {
+    console.error("Publish error:", error);
+    status.textContent =
+      "Cannot connect to Origyn backend.";
+  }
+}, true);
 
   restoreDraft();
   refreshConditionalFields();
