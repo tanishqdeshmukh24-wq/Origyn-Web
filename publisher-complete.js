@@ -289,7 +289,168 @@ document.addEventListener("DOMContentLoaded", () => {
       "Cannot connect to Origyn backend.";
   }
 }, true);
+  // =========================
+  // MY PRODUCTS
+  // =========================
 
+  async function loadMyProducts() {
+    const list = document.querySelector("#my-products-list");
+    const token = localStorage.getItem("origynAccessToken");
+    const user = JSON.parse(localStorage.getItem("origynUser") || "null");
+
+    if (!list) return;
+
+    if (!token || !user) {
+      list.innerHTML = "<p>Please log in to see your products.</p>";
+      return;
+    }
+
+    list.innerHTML = "<p>Loading your products...</p>";
+
+    try {
+      const response = await fetch(
+        "http://localhost:5000/api/products?limit=100",
+        {
+          headers: {
+            "Authorization": "Bearer " + token
+          }
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        list.innerHTML = `<p>${result.error || "Failed to load products."}</p>`;
+        return;
+      }
+
+      // Show only products belonging to this publisher
+      const products = (result.data || []).filter(product =>
+        product.publisher_id === user.publisher_id
+      );
+
+      if (!products.length) {
+        list.innerHTML = "<p>You haven't published any products yet.</p>";
+        return;
+      }
+
+      list.innerHTML = products.map(product => `
+        <div class="my-product-card">
+          <div>
+            <h3>${product.name}</h3>
+            <p>₹${(Number(product.price_paise || 0) / 100).toLocaleString("en-IN")}</p>
+            <span>${product.status || "published"}</span>
+          </div>
+
+          <div class="my-product-actions">
+            ${
+              product.status === "published"
+                ? `<button type="button" data-archive-product="${product.id}">
+                    Archive
+                   </button>`
+                : `<button type="button" data-delete-product="${product.id}">
+                    Delete
+                   </button>`
+            }
+          </div>
+        </div>
+      `).join("");
+
+    } catch (error) {
+      console.error("My products error:", error);
+      list.innerHTML = "<p>Cannot connect to Origyn backend.</p>";
+    }
+  }
+
+
+  // Archive a published product
+  document.addEventListener("click", async (event) => {
+    const archiveButton = event.target.closest("[data-archive-product]");
+    if (!archiveButton) return;
+
+    const productId = archiveButton.dataset.archiveProduct;
+    const token = localStorage.getItem("origynAccessToken");
+
+    if (!confirm("Archive this product from the store?")) return;
+
+    archiveButton.disabled = true;
+    archiveButton.textContent = "Archiving...";
+
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/products/${productId}/archive`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer " + token
+          }
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.error || "Failed to archive product.");
+        archiveButton.disabled = false;
+        archiveButton.textContent = "Archive";
+        return;
+      }
+
+      await loadMyProducts();
+
+    } catch (error) {
+      console.error("Archive error:", error);
+      alert("Cannot connect to Origyn backend.");
+      archiveButton.disabled = false;
+      archiveButton.textContent = "Archive";
+    }
+  });
+
+
+  // Delete a draft / non-published product
+  document.addEventListener("click", async (event) => {
+    const deleteButton = event.target.closest("[data-delete-product]");
+    if (!deleteButton) return;
+
+    const productId = deleteButton.dataset.deleteProduct;
+    const token = localStorage.getItem("origynAccessToken");
+
+    if (!confirm("Permanently delete this product?")) return;
+
+    deleteButton.disabled = true;
+    deleteButton.textContent = "Deleting...";
+
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/products/${productId}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Authorization": "Bearer " + token
+          }
+        }
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        alert(data.error || "Failed to delete product.");
+        deleteButton.disabled = false;
+        deleteButton.textContent = "Delete";
+        return;
+      }
+
+      await loadMyProducts();
+
+    } catch (error) {
+      console.error("Delete error:", error);
+      alert("Cannot connect to Origyn backend.");
+      deleteButton.disabled = false;
+      deleteButton.textContent = "Delete";
+    }
+  });
+
+
+  loadMyProducts();
   restoreDraft();
   refreshConditionalFields();
 });
