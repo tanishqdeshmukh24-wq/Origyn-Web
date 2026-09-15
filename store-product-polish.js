@@ -3,7 +3,6 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(!modal)return;
   const info=modal.querySelector('.modal-info');
   let qty=1;
-  const safe=s=>String(s||'').replace(/[<>&"]/g,'');
 
   function enhance(){
     if(!modal.classList.contains('open')||!info)return;
@@ -24,14 +23,15 @@ document.addEventListener('DOMContentLoaded',()=>{
     const saved=save?.classList.contains('saved');
 
     box.innerHTML=`
-      <div class="product-detail-price-row">
-        <div class="product-detail-current-price">${safe(document.querySelector('#modal-price')?.textContent)}</div>
-        <button type="button" class="product-save-detail ${saved?'saved':''}" aria-label="${saved?'Remove from saved':'Save product'}">${saved?'♥':'♡'}</button>
+      <div class="product-detail-save-row">
+        <button type="button" class="product-save-detail ${saved?'saved':''}" aria-label="${saved?'Remove from saved':'Save product'}">${saved?'♥':'♡'} ${saved?'Saved':'Save for later'}</button>
       </div>
-      <div class="product-qty">
-        <button type="button" data-qty="minus" aria-label="Decrease quantity">−</button>
-        <span>${qty}</span>
-        <button type="button" data-qty="plus" aria-label="Increase quantity">+</button>
+      <div class="product-purchase-row">
+        <div class="product-qty">
+          <button type="button" data-qty="minus" aria-label="Decrease quantity">−</button>
+          <span>${qty}</span>
+          <button type="button" data-qty="plus" aria-label="Increase quantity">+</button>
+        </div>
       </div>
       <div class="product-shipping-note"><span>✓</span><div><strong>Ready to order</strong> Delivery estimates, stock and payment options will be connected through the Common API.</div></div>
       <div class="product-trust-line"><span>✓ Secure checkout</span><span>✓ Verified seller</span><span>✓ Easy returns</span></div>`;
