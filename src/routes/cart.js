@@ -7,20 +7,10 @@ const router = express.Router();
 router.use(authenticate);
 
 async function cartResponse(userId) {
-  const result = await pool.query(`
-    SELECT ci.id,ci.product_id,ci.variant_id,ci.quantity,ci.unit_price_paise,ci.product_snapshot,ci.variant_snapshot,ci.created_at,ci.updated_at,p.status,p.currency
-    FROM cart_items ci
-    JOIN products p ON p.id=ci.product_id
-    WHERE ci.user_id=$1
-    ORDER BY ci.created_at
-  `, [userId]);
+  const result = await pool.query(`SELECT ci.id,ci.product_id,ci.variant_id,ci.quantity,ci.unit_price_paise,ci.product_snapshot,ci.variant_snapshot,ci.created_at,ci.updated_at,p.status,p.currency FROM cart_items ci JOIN products p ON p.id=ci.product_id WHERE ci.user_id=$1 ORDER BY ci.created_at`, [userId]);
   const total = result.rows.reduce((sum, x) => sum + Number(x.unit_price_paise) * x.quantity, 0);
   const currencies = [...new Set(result.rows.map(x => x.currency).filter(Boolean))];
-  return {
-    items: result.rows,
-    total_paise: total,
-    currency: currencies.length === 1 ? currencies[0] : null
-  };
+  return { items: result.rows, total_paise: total, currency: currencies.length === 1 ? currencies[0] : null };
 }
 
 router.get('/', async (req, res, next) => {
