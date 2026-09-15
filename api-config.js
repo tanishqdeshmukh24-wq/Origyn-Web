@@ -8,10 +8,11 @@
 (function configureOrigynApi() {
   if (window.ORIGYN_API_BASE_URL) return;
 
-  const host = window.location.hostname;
+  const host = window.location.hostname || 'localhost';
   const isLocalhost = host === 'localhost' || host === '127.0.0.1' || host === '::1';
+  const isLocalFile = window.location.protocol === 'file:';
 
-  window.ORIGYN_API_BASE_URL = isLocalhost
-    ? `${window.location.protocol}//${host}:5000/api`
+  window.ORIGYN_API_BASE_URL = isLocalhost || isLocalFile
+    ? `http://${host}:5000/api`
     : `${window.location.origin}/api`;
 })();
