@@ -4,6 +4,14 @@ const { authenticate } = require('../middleware/auth');
 const { recordEvent, httpError } = require('../services/commerceService');
 
 const router = express.Router();
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function requireUuid(value, field) {
+  if (typeof value !== 'string' || !UUID_RE.test(value)) {
+    throw httpError(`${field} must be a valid UUID`);
+  }
+  return value;
+}
 
 function parseReviewInput(body) {
   const rating = body.rating === undefined ? undefined : Number(body.rating);
@@ -21,9 +29,10 @@ function parseReviewInput(body) {
 
 router.get('/products/:id/reviews', async (req, res, next) => {
   try {
+    const productId = requireUuid(req.params.id, 'product id');
     const product = await pool.query(
       'SELECT id, category_id FROM products WHERE id=$1 AND status=$2',
-      [req.params.id, 'published']
+      [productId, 'published']
     );
     if (!product.rowCount) throw httpError('Product not found', 404);
 
@@ -35,7 +44,7 @@ router.get('/products/:id/reviews', async (req, res, next) => {
        JOIN users u ON u.id = r.user_id
        WHERE r.product_id = $1
        ORDER BY r.created_at DESC`,
-      [req.params.id]
+      [productId]
     );
 
     const rating = await pool.query(
@@ -48,7 +57,7 @@ router.get('/products/:id/reviews', async (req, res, next) => {
               COUNT(*) FILTER (WHERE rating=1)::int AS one
        FROM product_reviews
        WHERE product_id = $1`,
-      [req.params.id]
+      [productId]
     );
 
     res.json({ reviews: reviews.rows, rating: rating.rows[0] });
@@ -59,6 +68,7 @@ router.get('/products/:id/reviews', async (req, res, next) => {
 
 router.post('/products/:id/reviews', authenticate, async (req, res, next) => {
   try {
+    const productId = requireUuid(req.params.id, 'product id');
     const { rating, text } = parseReviewInput(req.body || {});
     if (rating === undefined || text === undefined) {
       throw httpError('rating and review_text are required');
@@ -66,7 +76,7 @@ router.post('/products/:id/reviews', authenticate, async (req, res, next) => {
 
     const product = await pool.query(
       'SELECT id, category_id FROM products WHERE id=$1 AND status=$2',
-      [req.params.id, 'published']
+      [productId, 'published']
     );
     if (!product.rowCount) throw httpError('Product not found', 404);
 
@@ -79,13 +89,13 @@ router.post('/products/:id/reviews', authenticate, async (req, res, next) => {
          AND oi.product_id = $2
          AND o.payment_status IN ('paid', 'refunded', 'partially_refunded')
        LIMIT 1`,
-      [req.user.id, req.params.id]
+      [req.user.id, productId]
     );
     const verifiedPurchase = purchase.rowCount > 0;
 
     const existing = await pool.query(
       'SELECT id FROM product_reviews WHERE user_id=$1 AND product_id=$2',
-      [req.user.id, req.params.id]
+      [req.user.id, productId]
     );
 
     const review = await pool.query(
@@ -99,13 +109,13 @@ router.post('/products/:id/reviews', authenticate, async (req, res, next) => {
          verified_purchase = EXCLUDED.verified_purchase,
          updated_at = NOW()
        RETURNING *`,
-      [req.user.id, req.params.id, rating, text, verifiedPurchase]
+      [req.user.id, productId, rating, text, verifiedPurchase]
     );
 
     await recordEvent({
       userId: req.user.id,
       eventType: 'product_rated',
-      productId: req.params.id,
+      productId,
       categoryId: product.rows[0].category_id,
       metadata: { rating, action: existing.rowCount ? 'updated' : 'created' }
     });
@@ -118,6 +128,7 @@ router.post('/products/:id/reviews', authenticate, async (req, res, next) => {
 
 router.patch('/reviews/:id', authenticate, async (req, res, next) => {
   try {
+    const reviewId = requireUuid(req.params.id, 'review id');
     const { rating, text } = parseReviewInput(req.body || {});
     if (rating === undefined && text === undefined) {
       throw httpError('At least one of rating or review_text is required');
@@ -128,7 +139,7 @@ router.patch('/reviews/:id', authenticate, async (req, res, next) => {
        FROM product_reviews r
        JOIN products p ON p.id = r.product_id
        WHERE r.id=$1 AND r.user_id=$2 AND p.status=$3`,
-      [req.params.id, req.user.id, 'published']
+      [reviewId, req.user.id, 'published']
     );
     if (!current.rowCount) throw httpError('Review not found', 404);
 
@@ -152,7 +163,7 @@ router.patch('/reviews/:id', authenticate, async (req, res, next) => {
            updated_at=NOW()
        WHERE id=$4 AND user_id=$5
        RETURNING *`,
-      [rating, text, purchase.rowCount > 0, req.params.id, req.user.id]
+      [rating, text, purchase.rowCount > 0, reviewId, req.user.id]
     );
 
     await recordEvent({
@@ -171,11 +182,12 @@ router.patch('/reviews/:id', authenticate, async (req, res, next) => {
 
 router.delete('/reviews/:id', authenticate, async (req, res, next) => {
   try {
+    const reviewId = requireUuid(req.params.id, 'review id');
     const review = await pool.query(
       `DELETE FROM product_reviews
        WHERE id=$1 AND user_id=$2
        RETURNING id`,
-      [req.params.id, req.user.id]
+      [reviewId, req.user.id]
     );
     if (!review.rowCount) return res.status(404).json({ error: 'Review not found' });
     res.status(204).end();
