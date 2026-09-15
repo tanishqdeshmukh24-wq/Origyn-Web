@@ -26,7 +26,8 @@ router.get('/', async (req, res, next) => {
 router.post('/items', async (req, res, next) => {
   const client = await pool.connect();
   try {
-    const { product_id, variant_id = null, quantity = 1 } = req.body;
+    const body = req.body || {};
+    const { product_id, variant_id = null, quantity = 1 } = body;
     requireUuid(product_id,'product_id');
     if(variant_id!==null) requireUuid(variant_id,'variant_id');
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 1000) throw httpError('product_id and a valid quantity are required');
@@ -47,17 +48,18 @@ router.post('/items', async (req, res, next) => {
 
 router.patch('/items/:id', async (req, res, next) => {
   try {
-    const quantity = Number(req.body.quantity);
+    const itemId = requireUuid(req.params.id, 'cart item id');
+    const quantity = Number((req.body || {}).quantity);
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 1000) throw httpError('Quantity must be a positive integer');
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      const r = await client.query('SELECT ci.*,p.status,p.stock,p.product_type FROM cart_items ci JOIN products p ON p.id=ci.product_id WHERE ci.id=$1 AND ci.user_id=$2 FOR UPDATE', [req.params.id, req.user.id]);
+      const r = await client.query('SELECT ci.*,p.status,p.stock,p.product_type FROM cart_items ci JOIN products p ON p.id=ci.product_id WHERE ci.id=$1 AND ci.user_id=$2 FOR UPDATE', [itemId, req.user.id]);
       if (!r.rowCount) throw httpError('Cart item not found', 404);
       const { product, variant } = await getProductForCommerce(client, r.rows[0].product_id, r.rows[0].variant_id, false);
       if (!availability(product, variant, quantity)) throw httpError('Insufficient inventory', 409);
       const price = currentUnitPrice(product, variant);
-      await client.query('UPDATE cart_items SET quantity=$1,unit_price_paise=$2,updated_at=NOW() WHERE id=$3 AND user_id=$4', [quantity, price, req.params.id, req.user.id]);
+      await client.query('UPDATE cart_items SET quantity=$1,unit_price_paise=$2,updated_at=NOW() WHERE id=$3 AND user_id=$4', [quantity, price, itemId, req.user.id]);
       await client.query('COMMIT');
       res.json(await cartResponse(req.user.id));
     } catch (e) { await client.query('ROLLBACK').catch(() => {}); throw e; } finally { client.release(); }
@@ -66,7 +68,8 @@ router.patch('/items/:id', async (req, res, next) => {
 
 router.delete('/items/:id', async (req, res, next) => {
   try {
-    const r = await pool.query('DELETE FROM cart_items WHERE id=$1 AND user_id=$2 RETURNING product_id', [req.params.id, req.user.id]);
+    const itemId = requireUuid(req.params.id, 'cart item id');
+    const r = await pool.query('DELETE FROM cart_items WHERE id=$1 AND user_id=$2 RETURNING product_id', [itemId, req.user.id]);
     if (!r.rowCount) return res.status(404).json({ error: 'Cart item not found' });
     await recordEvent({ userId: req.user.id, eventType: 'cart_item_removed', productId: r.rows[0].product_id });
     res.status(204).end();
