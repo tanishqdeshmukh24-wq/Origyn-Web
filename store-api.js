@@ -1,7 +1,7 @@
 /* Origyn Store API integration.
  * Keeps the existing Store presentation but replaces demo product data with
- * published products from the common backend. Cart/wishlist/checkout remain
- * local until their dedicated integration phases.
+ * published products from the common backend. Cart/checkout remain local
+ * until their dedicated integration phases. Wishlist is server-backed.
  */
 document.addEventListener('DOMContentLoaded', () => {
   'use strict';
@@ -39,235 +39,195 @@ document.addEventListener('DOMContentLoaded', () => {
     origin: p.ecosystem_status === 'origyn' ? 'Origyn Original'
       : p.ecosystem_status === 'origyn_member' ? 'Origyn Ecosystem'
       : 'Marketplace',
-    desc: p.description || 'A product available on the Origyn marketplace.',
-    featured: 0,
-    rating: 0,
-    reviews: 0,
-    images: Array.isArray(p.images) ? p.images : [],
+    d: p.description || 'Discover this product on Origyn.',
+    image: Array.isArray(p.images) && p.images.length ? p.images[0] : '',
+    rating: Number(p.rating_average || 0),
+    reviews: Number(p.rating_count || 0),
+    stock: Number(p.stock || 0),
     variants: Array.isArray(p.variants) ? p.variants : [],
-    stock: p.stock,
-    raw: p,
-    index
+    created: p.created_at || '',
+    featured: p.ecosystem_status === 'origyn' || p.ecosystem_status === 'origyn_member' || index < 3
   });
 
-  function score(p, q) {
-    if (!q) return 0;
-    const fields = [p.n, p.cat, p.type, p.seller, p.desc].map(v => String(v || '').toLowerCase());
-    let x = 0;
-    if (fields[0] === q) x += 100;
-    if (fields[0].startsWith(q)) x += 70;
-    if (fields[0].includes(q)) x += 45;
-    if (fields[1] === q) x += 35;
-    if (fields[2].includes(q)) x += 25;
-    if (fields[3].includes(q)) x += 18;
-    if (fields[4].includes(q)) x += 10;
-    return x;
-  }
+  const setLoading = (message) => {
+    grid.innerHTML = `<div class="store-empty-state"><p>${message}</p></div>`;
+  };
 
-  function matches(p) {
-    return (filter === 'All' || p.cat === filter) && (!query || score(p, query) > 0);
-  }
-
-  function ratingMarkup(p) {
-    if (!p.reviews) return '<div class="product-rating"><small>No ratings yet</small></div>';
-    return `<div class="product-rating" aria-label="${p.rating} out of 5 stars"><span>★★★★★</span><b>${p.rating}</b><small>(${p.reviews})</small></div>`;
-  }
-
-  function imageStyle(p) {
-    const image = p.images.find(x => x && x.url)?.url;
-    return image ? ` style="background-image:url('${String(image).replace(/'/g, '%27')}');background-size:cover;background-position:center"` : '';
-  }
-
-  function card(p, i) {
-    const unavailable = p.stock !== null && p.stock !== undefined && Number(p.stock) <= 0;
-    return `<article class="product-card"><div class="product-visual"${imageStyle(p)}><span class="product-badge">${p.type}</span><button class="product-save" data-api-save="${i}" aria-label="Save product">♡</button>${!p.images.length ? `<span class="product-mark">${p.mark}</span>` : ''}</div><div class="product-body"><span class="product-origin">${p.origin} · ${p.cat}</span><h3>${escapeHtml(p.n)}</h3>${ratingMarkup(p)}<p>${escapeHtml(p.desc)}</p><div class="product-foot"><strong class="product-price">${money(p.p, p.raw.currency)}</strong><div class="product-actions"><button class="mini-btn" data-api-view="${i}">View</button><button class="mini-btn dark" data-api-add="${i}" ${unavailable ? 'disabled' : ''}>${unavailable ? 'Unavailable' : 'Add'}</button></div></div></div></article>`;
-  }
-
-  function escapeHtml(value) {
-    return String(value ?? '').replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
-  }
-
-  function render() {
-    let list = products.map((p, i) => ({ p, i, matchScore: score(p, query) })).filter(x => matches(x.p));
-    if (query) list.sort((a, b) => b.matchScore - a.matchScore);
-    else if (sort === 'low') list.sort((a, b) => a.p.p - b.p.p);
-    else if (sort === 'high') list.sort((a, b) => b.p.p - a.p.p);
-    else if (sort === 'newest') list.sort((a, b) => new Date(b.p.raw.created_at || 0) - new Date(a.p.raw.created_at || 0));
-    else list.sort((a, b) => new Date(b.p.raw.created_at || 0) - new Date(a.p.raw.created_at || 0));
-
-    if (!list.length) {
-      grid.innerHTML = `<div class="saved-empty search-empty-state"><div class="saved-empty-icon">⌕</div><h3>No products found</h3><p>We couldn’t find a published product matching your search.</p><small class="search-hint">Try a different spelling, category, or product name.</small></div>`;
-    } else {
-      grid.innerHTML = list.map(x => card(x.p, x.i)).join('');
+  const loadProducts = async () => {
+    setLoading('Loading products…');
+    try {
+      const response = await window.OrigynAPI.get('/api/products?limit=100');
+      products = (response.data || []).map(normalize);
+      await loadWishlist();
+      render();
+    } catch (error) {
+      console.error('Origyn Store product load failed:', error);
+      setLoading('Could not load products. Please make sure the Origyn API is running and try again.');
     }
+  };
+
+  const loadWishlist = async () => {
+    saved = new Set();
+    try {
+      const response = await window.OrigynAPI.get('/api/wishlist');
+      (response.data || []).forEach((item) => {
+        if (item.product_id) saved.add(item.product_id);
+      });
+    } catch (error) {
+      if (error.status !== 401) console.warn('Wishlist could not be loaded:', error.message);
+    }
+  };
+
+  const toggleWishlist = async (productId) => {
+    if (!window.OrigynAPI.isAuthenticated()) {
+      window.OrigynAPI.setAuthRequiredMessage?.('Sign in to save products to your wishlist.');
+      return;
+    }
+
+    const wasSaved = saved.has(productId);
+    try {
+      if (wasSaved) {
+        await window.OrigynAPI.delete(`/api/wishlist/${productId}`);
+        saved.delete(productId);
+      } else {
+        await window.OrigynAPI.post(`/api/wishlist/${productId}`);
+        saved.add(productId);
+      }
+      render();
+      if (selected && selected.id === productId) renderModal(selected);
+    } catch (error) {
+      console.error('Wishlist update failed:', error);
+      alert(error.message || 'Could not update your saved products.');
+    }
+  };
+
+  const filtered = () => {
+    let list = products.filter((p) => {
+      const matchesFilter = filter === 'All' || p.cat === filter || p.type === filter;
+      const haystack = `${p.n} ${p.cat} ${p.type} ${p.seller} ${p.d}`.toLowerCase();
+      return matchesFilter && (!query || haystack.includes(query.toLowerCase()));
+    });
+
+    if (sort === 'low') list.sort((a, b) => a.p - b.p);
+    else if (sort === 'high') list.sort((a, b) => b.p - a.p);
+    else if (sort === 'newest') list.sort((a, b) => new Date(b.created) - new Date(a.created));
+    else list.sort((a, b) => Number(b.featured) - Number(a.featured));
+    return list;
+  };
+
+  const render = () => {
+    const list = filtered();
     const count = $('#result-count');
     if (count) count.textContent = `${list.length} product${list.length === 1 ? '' : 's'}`;
-  }
+    grid.innerHTML = list.length ? list.map((p) => `
+      <article class="product-card" data-id="${p.id}">
+        <button class="save-product ${saved.has(p.id) ? 'saved' : ''}" data-save="${p.id}" aria-label="${saved.has(p.id) ? 'Remove from saved' : 'Save product'}">${saved.has(p.id) ? '♥' : '♡'}</button>
+        <button class="product-card-main" data-product="${p.id}">
+          <div class="product-image">${p.image ? `<img src="${p.image}" alt="${p.n}" loading="lazy">` : `<span>${p.mark}</span>`}</div>
+          <div class="product-card-copy"><small>${p.cat} · ${p.origin}</small><h3>${p.n}</h3><p>${p.seller}</p><strong>${money(p.p)}</strong></div>
+        </button>
+      </article>
+    `).join('') : '<div class="store-empty-state"><p>No products match your search.</p></div>';
 
-  function renderEcosystem() {
-    const root = $('#ecosystem-grid');
-    if (!root) return;
-    const ecosystem = products.filter(p => p.origin !== 'Marketplace').slice(0, 4);
-    root.innerHTML = ecosystem.map((p, i) => `<article class="ecosystem-card"><div class="card-meta"><span>${p.origin}</span><span>0${i + 1}</span></div><div><div class="card-mark">${p.mark}</div><h3>${escapeHtml(p.n)}</h3>${ratingMarkup(p)}<p>${escapeHtml(p.desc)}</p></div></article>`).join('');
-  }
+    grid.querySelectorAll('[data-product]').forEach((button) => {
+      button.addEventListener('click', () => openProduct(button.dataset.product));
+    });
+    grid.querySelectorAll('[data-save]').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
+        toggleWishlist(button.dataset.save);
+      });
+    });
+  };
 
-  function openProduct(i) {
-    selected = products[i];
-    if (!selected) return;
-    const modal = $('#product-modal');
-    if (!modal) return;
-    $('#modal-badge').textContent = `${selected.origin} · ${selected.cat} · ${selected.type}`;
-    $('#modal-name').textContent = selected.n;
-    $('#modal-description').textContent = selected.desc;
-    $('#modal-seller').textContent = selected.seller;
-    $('#modal-price').textContent = money(selected.p, selected.raw.currency);
-    const image = selected.images.find(x => x && x.url)?.url;
-    const imageBox = $('#modal-image');
-    if (image) {
-      imageBox.textContent = '';
-      imageBox.style.backgroundImage = `url('${String(image).replace(/'/g, '%27')}')`;
-      imageBox.style.backgroundSize = 'cover';
-      imageBox.style.backgroundPosition = 'center';
-    } else {
-      imageBox.style.backgroundImage = '';
-      imageBox.textContent = selected.mark;
-    }
-    modal.classList.add('open');
-    document.body.classList.add('modal-open');
-  }
-
-  function renderCart() {
-    const box = $('#cart-items');
-    if (!box) return;
-    if (!cart.length) box.innerHTML = '<div class="cart-empty">Your cart is empty.<br>Find something worth owning.</div>';
-    else box.innerHTML = cart.map((x, i) => `<div class="cart-row"><div><h4>${escapeHtml(x.p.n)}</h4><p>${money(x.p.p, x.p.raw.currency)} · ${x.q}</p><div class="cart-controls"><button data-api-dec="${i}">−</button><button data-api-inc="${i}">+</button><button data-api-rem="${i}">×</button></div></div><strong>${money(x.p.p * x.q, x.p.raw.currency)}</strong></div>`).join('');
-    const total = cart.reduce((sum, x) => sum + x.p.p * x.q, 0);
-    if ($('#cart-total')) $('#cart-total').textContent = money(total);
-    if ($('#cart-count')) $('#cart-count').textContent = cart.reduce((sum, x) => sum + x.q, 0);
-  }
-
-  function add(i) {
-    const p = products[i];
-    if (!p) return;
-    const item = cart.find(x => x.p.id === p.id);
-    if (item) item.q += 1;
-    else cart.push({ p, q: 1 });
-    renderCart();
-    $('#cart')?.classList.add('open');
-  }
-
-  async function loadProducts() {
-    grid.innerHTML = '<div class="saved-empty search-empty-state"><div class="saved-empty-icon">◌</div><h3>Loading Origyn products…</h3><p>Fetching published products from the marketplace.</p></div>';
+  const openProduct = async (id) => {
     try {
-      const result = await window.OrigynAPI.get('/products?limit=100');
-      products = Array.isArray(result?.data) ? result.data.map(normalize) : [];
-      render();
-      renderEcosystem();
+      const response = await window.OrigynAPI.get(`/api/products/${id}`);
+      selected = normalize(response.data || response);
+      renderModal(selected);
     } catch (error) {
-      grid.innerHTML = `<div class="saved-empty search-empty-state"><div class="saved-empty-icon">!</div><h3>Store unavailable</h3><p>${escapeHtml(error.message || 'Unable to load products.')}</p><small class="search-hint">Check that the Origyn backend is running and try again.</small></div>`;
+      const product = products.find((p) => p.id === id);
+      if (product) {
+        selected = product;
+        renderModal(product);
+      }
     }
-  }
+  };
 
-  function setFilter(value) {
-    filter = value;
-    document.querySelectorAll('.filter').forEach(button => button.classList.toggle('active', button.dataset.filter === value));
-    render();
-  }
+  const renderModal = (p) => {
+    $('#modal-badge').textContent = `${p.cat} · ${p.origin}`;
+    $('#modal-name').textContent = p.n;
+    $('#modal-description').textContent = p.d;
+    $('#modal-seller').textContent = p.seller;
+    $('#modal-price').textContent = money(p.p);
+    $('#modal-image').innerHTML = p.image ? `<img src="${p.image}" alt="${p.n}">` : `<span>${p.mark}</span>`;
+    const addButton = $('#modal-add');
+    if (addButton) addButton.textContent = saved.has(p.id) ? 'Saved ✓' : 'Add to cart →';
+    $('#product-modal').classList.add('open');
+  };
 
-  function setSearch(value) {
-    query = String(value || '').trim().toLowerCase();
-    const top = $('#top-search');
-    const store = $('#store-search');
-    if (top && top.value !== value) top.value = value;
-    if (store && store.value !== value) store.value = value;
-    render();
-  }
+  $('#modal-close')?.addEventListener('click', () => $('#product-modal').classList.remove('open'));
+  $('#product-modal')?.addEventListener('click', (event) => {
+    if (event.target.id === 'product-modal') $('#product-modal').classList.remove('open');
+  });
 
-  document.addEventListener('click', event => {
-    const filterButton = event.target.closest('.filter, [data-category]');
-    if (filterButton) {
-      event.preventDefault();
-      event.stopPropagation();
-      const value = filterButton.dataset.filter || filterButton.dataset.category;
-      if (value) setFilter(value);
-      document.querySelector('#discover')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      return;
-    }
-    const view = event.target.closest('[data-api-view]');
-    const addButton = event.target.closest('[data-api-add]');
-    const save = event.target.closest('[data-api-save]');
-    if (view) { event.preventDefault(); event.stopPropagation(); openProduct(Number(view.dataset.apiView)); return; }
-    if (addButton) { event.preventDefault(); event.stopPropagation(); add(Number(addButton.dataset.apiAdd)); return; }
-    if (save) {
-      event.preventDefault(); event.stopPropagation();
-      const i = Number(save.dataset.apiSave);
-      const id = products[i]?.id;
-      if (id) saved.has(id) ? saved.delete(id) : saved.add(id);
-      save.textContent = saved.has(id) ? '♥' : '♡';
-      save.classList.toggle('saved', saved.has(id));
-      return;
-    }
-    const inc = event.target.closest('[data-api-inc]');
-    const dec = event.target.closest('[data-api-dec]');
-    const rem = event.target.closest('[data-api-rem]');
-    if (inc || dec || rem) {
-      event.preventDefault(); event.stopPropagation();
-      const i = Number((inc || dec || rem).dataset.apiInc ?? (inc || dec || rem).dataset.apiDec ?? (inc || dec || rem).dataset.apiRem);
-      if (inc) cart[i].q += 1;
-      if (dec) { cart[i].q -= 1; if (cart[i].q < 1) cart.splice(i, 1); }
-      if (rem) cart.splice(i, 1);
-      renderCart();
-    }
-  }, true);
+  $('#modal-add')?.addEventListener('click', () => {
+    if (selected) toggleWishlist(selected.id);
+  });
 
-  document.addEventListener('input', event => {
-    if (event.target.id !== 'top-search' && event.target.id !== 'store-search') return;
-    event.stopPropagation();
+  $('#store-search')?.addEventListener('input', (event) => {
+    query = event.target.value.trim();
     clearTimeout(searchTimer);
-    const value = event.target.value;
-    searchTimer = setTimeout(() => setSearch(value), 200);
-  }, true);
-
-  document.addEventListener('change', event => {
-    if (event.target.id !== 'sort-products') return;
-    event.stopPropagation();
+    searchTimer = setTimeout(render, 150);
+  });
+  $('#top-search')?.addEventListener('input', (event) => {
+    query = event.target.value.trim();
+    const input = $('#store-search');
+    if (input) input.value = event.target.value;
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(render, 150);
+  });
+  $('#clear-search')?.addEventListener('click', () => {
+    query = '';
+    if ($('#store-search')) $('#store-search').value = '';
+    if ($('#top-search')) $('#top-search').value = '';
+    render();
+  });
+  $('#sort-products')?.addEventListener('change', (event) => {
     sort = event.target.value;
     render();
-  }, true);
+  });
+  document.querySelectorAll('.quick-filters .filter').forEach((button) => {
+    button.addEventListener('click', () => {
+      document.querySelectorAll('.quick-filters .filter').forEach((b) => b.classList.remove('active'));
+      button.classList.add('active');
+      filter = button.dataset.filter;
+      render();
+    });
+  });
 
-  $('#clear-search')?.addEventListener('click', event => {
-    event.preventDefault();
-    event.stopPropagation();
-    setSearch('');
-  }, true);
+  document.querySelectorAll('[data-category]').forEach((button) => {
+    button.addEventListener('click', () => {
+      filter = button.dataset.category;
+      document.querySelectorAll('.quick-filters .filter').forEach((b) => b.classList.toggle('active', b.dataset.filter === filter));
+      document.querySelector('#discover')?.scrollIntoView({ behavior: 'smooth' });
+      render();
+    });
+  });
 
-  $('#wishlist-open')?.addEventListener('click', event => {
-    event.preventDefault();
-    event.stopPropagation();
-    alert('Wishlist API integration is the next Store phase.');
-  }, true);
-
-  $('#modal-close')?.addEventListener('click', event => {
-    event.preventDefault();
-    event.stopPropagation();
-    $('#product-modal')?.classList.remove('open');
-    document.body.classList.remove('modal-open');
-  }, true);
-
-  $('#modal-add')?.addEventListener('click', event => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (selected) add(products.findIndex(p => p.id === selected.id));
-    $('#product-modal')?.classList.remove('open');
-    document.body.classList.remove('modal-open');
-  }, true);
-
-  $('#cart-open')?.addEventListener('click', event => {
-    event.preventDefault(); event.stopPropagation(); $('#cart')?.classList.add('open'); renderCart();
-  }, true);
-  $('#cart-close')?.addEventListener('click', event => {
-    event.preventDefault(); event.stopPropagation(); $('#cart')?.classList.remove('open');
-  }, true);
+  $('#wishlist-open')?.addEventListener('click', () => {
+    if (!window.OrigynAPI.isAuthenticated()) {
+      window.OrigynAPI.setAuthRequiredMessage?.('Sign in to view your saved products.');
+      return;
+    }
+    const savedProducts = products.filter((p) => saved.has(p.id));
+    grid.innerHTML = savedProducts.length
+      ? savedProducts.map((p) => `<article class="product-card" data-id="${p.id}"><button class="save-product saved" data-save="${p.id}" aria-label="Remove from saved">♥</button><button class="product-card-main" data-product="${p.id}"><div class="product-image">${p.image ? `<img src="${p.image}" alt="${p.n}" loading="lazy">` : `<span>${p.mark}</span>`}</div><div class="product-card-copy"><small>${p.cat} · ${p.origin}</small><h3>${p.n}</h3><p>${p.seller}</p><strong>${money(p.p)}</strong></div></button></article>`).join('')
+      : '<div class="store-empty-state"><p>Your saved products will appear here.</p></div>';
+    grid.querySelectorAll('[data-product]').forEach((button) => button.addEventListener('click', () => openProduct(button.dataset.product)));
+    grid.querySelectorAll('[data-save]').forEach((button) => button.addEventListener('click', (event) => { event.stopPropagation(); toggleWishlist(button.dataset.save); }));
+    document.querySelector('#discover')?.scrollIntoView({ behavior: 'smooth' });
+  });
 
   loadProducts();
 });
