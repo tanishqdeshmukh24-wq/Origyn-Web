@@ -192,7 +192,7 @@ router.post('/webhooks/:provider', async (req, res, next) => {
         pending: ['authorized', 'captured', 'failed', 'cancelled'],
         authorized: ['captured', 'failed', 'cancelled'],
         captured: ['refunded', 'partially_refunded'],
-        partially_refunded: ['refunded'],
+        partially_refunded: ['refunded', 'partially_refunded'],
         failed: [],
         cancelled: [],
         refunded: []
@@ -208,10 +208,19 @@ router.post('/webhooks/:provider', async (req, res, next) => {
           [providerRefundId]
         );
 
+        let refundId;
         if (existingRefund.rowCount) {
-          if (existingRefund.rows[0].payment_id !== stored.id) {
+          const existing = existingRefund.rows[0];
+          if (existing.payment_id !== stored.id) {
             throw Object.assign(new Error('Provider refund ID is already associated with another payment'), { status: 409 });
           }
+          if (existing.status !== 'succeeded') {
+            throw Object.assign(new Error('Provider refund ID is already associated with a non-succeeded refund'), { status: 409 });
+          }
+          if (refundAmount !== null && refundAmount !== Number(existing.amount_paise)) {
+            throw Object.assign(new Error('Provider refund amount mismatch'), { status: 409 });
+          }
+          refundId = existing.id;
         } else {
           if (stored.status === 'refunded') {
             throw Object.assign(new Error('Payment is already fully refunded'), { status: 409 });
@@ -222,10 +231,14 @@ router.post('/webhooks/:provider', async (req, res, next) => {
              FROM refunds WHERE payment_id = $1`,
             [stored.id]
           );
-          const remaining = Number(stored.amount_paise) - Number(totals.rows[0].refunded_paise || 0);
-          const amount = status === 'partially_refunded' ? refundAmount : remaining;
+          const refundedBefore = Number(totals.rows[0].refunded_paise || 0);
+          const remaining = Number(stored.amount_paise) - refundedBefore;
+          const amount = status === 'partially_refunded' ? refundAmount : (refundAmount ?? remaining);
           if (!Number.isSafeInteger(amount) || amount <= 0 || amount > remaining) {
             throw Object.assign(new Error('Invalid refund amount'), { status: 409 });
+          }
+          if (status === 'refunded' && amount !== remaining) {
+            throw Object.assign(new Error('Full refund amount must equal the remaining refundable balance'), { status: 409 });
           }
 
           const pendingMatches = await client.query(
@@ -236,24 +249,47 @@ router.post('/webhooks/:provider', async (req, res, next) => {
           );
 
           if (pendingMatches.rowCount === 1) {
+            refundId = pendingMatches.rows[0].id;
             await client.query(
               `UPDATE refunds
                SET status = 'succeeded', provider_refund_id = $1, provider_payload = $2::jsonb, updated_at = NOW()
                WHERE id = $3`,
-              [providerRefundId, JSON.stringify(body), pendingMatches.rows[0].id]
+              [providerRefundId, JSON.stringify(body), refundId]
             );
           } else if (pendingMatches.rowCount > 1) {
             throw Object.assign(new Error('Multiple pending refunds match this provider refund; manual reconciliation required'), { status: 409 });
           } else {
-            await client.query(
+            const inserted = await client.query(
               `INSERT INTO refunds(payment_id, order_id, amount_paise, status, provider_refund_id, provider_payload)
-               VALUES($1, $2, $3, 'succeeded', $4, $5::jsonb)`,
+               VALUES($1, $2, $3, 'succeeded', $4, $5::jsonb)
+               RETURNING id`,
               [stored.id, orderId, amount, providerRefundId, JSON.stringify(body)]
             );
+            refundId = inserted.rows[0].id;
           }
         }
 
-        const newStatus = status === 'refunded' ? 'refunded' : 'partially_refunded';
+        const totalsAfter = await client.query(
+          `SELECT COALESCE(SUM(amount_paise) FILTER (WHERE status IN ('pending', 'succeeded')), 0) AS refunded_paise
+           FROM refunds WHERE payment_id = $1`,
+          [stored.id]
+        );
+        const cumulativeRefunded = Number(totalsAfter.rows[0].refunded_paise || 0);
+        if (!Number.isSafeInteger(cumulativeRefunded) || cumulativeRefunded > Number(stored.amount_paise)) {
+          throw Object.assign(new Error('Cumulative refunds exceed the original payment amount'), { status: 409 });
+        }
+
+        const newStatus = cumulativeRefunded === Number(stored.amount_paise) ? 'refunded' : 'partially_refunded';
+        if (status === 'refunded' && cumulativeRefunded !== Number(stored.amount_paise)) {
+          throw Object.assign(new Error('Full refund event is inconsistent with recorded refund totals'), { status: 409 });
+        }
+
+        await client.query(
+          `UPDATE refunds
+           SET provider_payload = COALESCE($1::jsonb, provider_payload), updated_at = NOW()
+           WHERE id = $2`,
+          [JSON.stringify(body), refundId]
+        );
         await client.query(
           `UPDATE payments
            SET provider = $1, provider_payment_id = COALESCE($2, provider_payment_id), status = $3,
@@ -290,7 +326,7 @@ router.post('/webhooks/:provider', async (req, res, next) => {
            WHERE id = $2`,
           [status, orderId, orderUpdate]
         );
-        if(orderUpdate) await releaseOrderReservations(client, orderId, 'released');
+        if (orderUpdate) await releaseOrderReservations(client, orderId, 'released');
       }
 
       await client.query('COMMIT');
@@ -331,7 +367,7 @@ router.post('/orders/:orderId/refunds', authenticate, requireRole('admin'), asyn
 
       const payment = paymentResult.rows[0];
       const remaining = Number(payment.amount_paise) - Number(payment.refunded_paise || 0);
-      if (payment.status !== 'captured' || amount > remaining) {
+      if (!['captured', 'partially_refunded'].includes(payment.status) || amount > remaining || !Number.isSafeInteger(remaining) || remaining <= 0) {
         throw Object.assign(new Error('Payment is not refundable for that amount'), { status: 409 });
       }
 
