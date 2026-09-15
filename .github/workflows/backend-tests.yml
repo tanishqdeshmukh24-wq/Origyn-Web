@@ -44,12 +44,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Apply database schema
+      - name: Apply database schema and migrations
         run: |
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/schema.sql
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/001_core_platform_publisher_products.sql
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/002_commerce.sql
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/003_commerce_inventory_reservations.sql
+          for pass in 1 2; do
+            echo "Applying database schema/migrations (pass $pass)"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/schema.sql
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/001_core_platform_publisher_products.sql
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/002_commerce.sql
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/003_commerce_inventory_reservations.sql
+          done
 
       - name: Syntax check
         run: npm run check
