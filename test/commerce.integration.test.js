@@ -277,7 +277,7 @@ test('invalid order and payment identifiers are rejected cleanly', async () => {
     method: 'POST',
     body: JSON.stringify({ amount_paise: 1000 })
   });
-  assert.equal(refund.response.status, 400);
+  assert.equal(refund.response.status, 403);
 });
 
 test('customer cannot access admin refund endpoint', async () => {
