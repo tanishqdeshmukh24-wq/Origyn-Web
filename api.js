@@ -5,7 +5,7 @@
  * - keep API URL handling in one place
  * - attach the authenticated bearer token when present
  * - provide consistent JSON/error handling
- * - expose small request helpers for future Store/Publisher modules
+ * - expose small request helpers for Store/Publisher modules
  *
  * This client never accepts or stores server secrets. The browser only holds
  * the access token returned by the authentication API.
@@ -148,6 +148,11 @@
       },
       me: () => request('/auth/me'),
       hasToken: () => Boolean(getToken()),
+      clear: clearToken
+    }),
+
+    session: Object.freeze({
+      isAuthenticated: () => Boolean(getToken()),
       clear: clearToken
     })
   });
