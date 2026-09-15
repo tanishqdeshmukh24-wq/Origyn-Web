@@ -9,11 +9,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let saved = new Set();
 
+  const isAuthenticated = () => window.OrigynAPI.auth?.hasToken?.() === true;
+
+  const requireAuth = (message) => {
+    if (isAuthenticated()) return true;
+    alert(message);
+    return false;
+  };
+
   const loadWishlist = async () => {
-    if (!window.OrigynAPI.isAuthenticated()) return;
+    if (!isAuthenticated()) return;
     try {
       const response = await window.OrigynAPI.get('/api/wishlist');
-      saved = new Set((response.data || []).map((item) => item.product_id).filter(Boolean));
+      saved = new Set((response?.data || []).map((item) => item.product_id).filter(Boolean));
       refreshSaveButtons();
     } catch (error) {
       console.warn('Wishlist could not be loaded:', error.message);
@@ -31,18 +39,15 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const toggle = async (productId, button) => {
-    if (!window.OrigynAPI.isAuthenticated()) {
-      window.OrigynAPI.setAuthRequiredMessage?.('Sign in to save products to your wishlist.');
-      return;
-    }
+    if (!requireAuth('Sign in to save products to your wishlist.')) return;
     const wasSaved = saved.has(productId);
     button.disabled = true;
     try {
       if (wasSaved) {
-        await window.OrigynAPI.delete(`/api/wishlist/${productId}`);
+        await window.OrigynAPI.delete(`/api/wishlist/${encodeURIComponent(productId)}`);
         saved.delete(productId);
       } else {
-        await window.OrigynAPI.post(`/api/wishlist/${productId}`);
+        await window.OrigynAPI.post(`/api/wishlist/${encodeURIComponent(productId)}`);
         saved.add(productId);
       }
       refreshSaveButtons();
@@ -64,10 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   wishlistButton.addEventListener('click', async (event) => {
     event.preventDefault();
-    if (!window.OrigynAPI.isAuthenticated()) {
-      window.OrigynAPI.setAuthRequiredMessage?.('Sign in to view your saved products.');
-      return;
-    }
+    if (!requireAuth('Sign in to view your saved products.')) return;
     await loadWishlist();
     const cards = Array.from(grid.querySelectorAll('.product-card'));
     cards.forEach((card) => {
