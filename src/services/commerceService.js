@@ -62,7 +62,7 @@ function validateShippingAddress(address) {
   };
 }
 
-async function activeReservedQuantity(client, productId, variantId) {
+async function activeReservedQuantity(client, productId, variantId, excludeReservationId=null) {
   await client.query(
     `UPDATE commerce_inventory_reservations
      SET status='expired', updated_at=NOW()
@@ -74,8 +74,9 @@ async function activeReservedQuantity(client, productId, variantId) {
     `SELECT COALESCE(SUM(quantity),0) AS reserved_quantity
      FROM commerce_inventory_reservations
      WHERE product_id=$1 AND variant_id IS NOT DISTINCT FROM $2
-       AND status='active' AND expires_at > NOW()`,
-    [productId, variantId]
+       AND status='active' AND expires_at > NOW()
+       AND ($3::uuid IS NULL OR id <> $3)`,
+    [productId, variantId, excludeReservationId]
   );
   return Number(result.rows[0].reserved_quantity||0);
 }
@@ -156,7 +157,7 @@ async function checkout(client,userId,shippingAddress,idempotencyKey){
     if(!Number.isSafeInteger(commissionPaise)||commissionPaise<0||commissionPaise>gross) throw httpError('Invalid commerce commission configuration',500);
     const snapshot={id:x.product.id,name:x.product.name,description:x.product.description,product_type:x.product.product_type,currency:x.product.currency,price_paise:x.price,category_id:x.product.category_id,category_name:x.product.category_name,image:x.product.primary_image};
     const variantSnapshot=x.variant?{id:x.variant.id,sku:x.variant.sku,name:x.variant.name,price_paise:x.variant.price_paise!=null?safePaise(x.variant.price_paise,'variant price'):null,option_values:x.variant.option_values}:null;
-    const itemResult=await client.query(`INSERT INTO order_items(order_id,product_id,seller_id,variant_id,quantity,unit_price_paise,commission_rate_percent,commission_paise,seller_payout_paise,product_snapshot,variant_snapshot) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb) RETURNING id`,[orderId,x.product.id,x.product.seller_id,x.variant?.id||null,x.quantity, x.price,rate,commissionPaise,gross-commissionPaise,JSON.stringify(snapshot),variantSnapshot?JSON.stringify(variantSnapshot):null]);
+    const itemResult=await client.query(`INSERT INTO order_items(order_id,product_id,seller_id,variant_id,quantity,unit_price_paise,commission_rate_percent,commission_paise,seller_payout_paise,product_snapshot,variant_snapshot) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb) RETURNING id`,[orderId,x.product.id,x.product.seller_id,x.variant?.id||null,x.quantity,x.price,rate,commissionPaise,gross-commissionPaise,JSON.stringify(snapshot),variantSnapshot?JSON.stringify(variantSnapshot):null]);
     await reserveInventory(client,orderId,itemResult.rows[0].id,x.product,x.variant,x.quantity);
   }
   await client.query('DELETE FROM cart_items WHERE user_id=$1',[userId]);
@@ -165,7 +166,7 @@ async function checkout(client,userId,shippingAddress,idempotencyKey){
 }
 
 async function finalizeCapturedPayment(client,orderId,providerPaymentId=null,providerPayload={}){
-  const orderResult=await client.query('SELECT id,customer_id,status,payment_status,fulfilment_status FROM orders WHERE id=$1 FOR UPDATE',[orderId]);
+  const orderResult=await client.query('SELECT id,customer_id,status,payment_status,fulfilment_status,total_paise FROM orders WHERE id=$1 FOR UPDATE',[orderId]);
   if(!orderResult.rowCount) throw httpError('Order not found',404);
   const order=orderResult.rows[0];
   const paymentResult=await client.query('SELECT id,status,amount_paise FROM payments WHERE order_id=$1 FOR UPDATE',[orderId]);
@@ -173,7 +174,7 @@ async function finalizeCapturedPayment(client,orderId,providerPaymentId=null,pro
   const payment=paymentResult.rows[0];
   if(payment.status==='captured'||order.payment_status==='paid') return {alreadyFinalized:true};
   if(!['pending','authorized'].includes(payment.status)||!['pending','authorized'].includes(order.payment_status)) throw httpError('Payment cannot be captured from its current state',409);
-  if(Number(payment.amount_paise)!==Number((await client.query('SELECT total_paise FROM orders WHERE id=$1',[orderId])).rows[0].total_paise)) throw httpError('Payment amount does not match order total',409);
+  if(Number(payment.amount_paise)!==Number(order.total_paise)) throw httpError('Payment amount does not match order total',409);
 
   const items=await client.query(`SELECT oi.id,oi.product_id,oi.variant_id,oi.quantity,p.product_type,p.stock,v.stock_mode,v.stock_quantity FROM order_items oi JOIN products p ON p.id=oi.product_id LEFT JOIN product_variants v ON v.id=oi.variant_id WHERE oi.order_id=$1 ORDER BY oi.id`,[orderId]);
   for(const item of items.rows){
@@ -193,14 +194,16 @@ async function finalizeCapturedPayment(client,orderId,providerPaymentId=null,pro
       const variant=await client.query('SELECT stock_quantity FROM product_variants WHERE id=$1 FOR UPDATE',[item.variant_id]);
       if(!variant.rowCount) throw httpError(`Variant not found for order item ${item.product_id}`,409);
       const stock=Number(variant.rows[0].stock_quantity);
-      if(!Number.isSafeInteger(stock)||stock<item.quantity) throw httpError(`Insufficient inventory for order item ${item.product_id}`,409);
+      const competingReserved=await activeReservedQuantity(client,item.product_id,item.variant_id,reservation?.id||null);
+      if(!Number.isSafeInteger(stock)||stock-competingReserved<item.quantity) throw httpError(`Insufficient available inventory for order item ${item.product_id}`,409);
       const updated=await client.query('UPDATE product_variants SET stock_quantity=stock_quantity-$2 WHERE id=$1 AND stock_quantity >= $2',[item.variant_id,item.quantity]);
       if(!updated.rowCount) throw httpError(`Insufficient inventory for order item ${item.product_id}`,409);
     }else if(!item.variant_id&&item.stock!=null){
       const product=await client.query('SELECT stock FROM products WHERE id=$1 FOR UPDATE',[item.product_id]);
       if(!product.rowCount) throw httpError(`Product not found for order item ${item.product_id}`,409);
       const stock=Number(product.rows[0].stock);
-      if(!Number.isSafeInteger(stock)||stock<item.quantity) throw httpError(`Insufficient inventory for order item ${item.product_id}`,409);
+      const competingReserved=await activeReservedQuantity(client,item.product_id,null,reservation?.id||null);
+      if(!Number.isSafeInteger(stock)||stock-competingReserved<item.quantity) throw httpError(`Insufficient available inventory for order item ${item.product_id}`,409);
       const updated=await client.query('UPDATE products SET stock=stock-$2 WHERE id=$1 AND stock >= $2',[item.product_id,item.quantity]);
       if(!updated.rowCount) throw httpError(`Insufficient inventory for order item ${item.product_id}`,409);
     }
