@@ -10,20 +10,18 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!api || !cartItems || !cartTotal || !cartCount || !cartDrawer) return;
 
   let cart = { items: [], total_paise: 0, currency: 'INR' };
-  let selected = null;
+  let selectedProductId = null;
 
   const money = (paise, currency = 'INR') => {
     try { return new Intl.NumberFormat('en-IN', { style: 'currency', currency }).format(Number(paise || 0) / 100); }
     catch (_error) { return `${currency} ${(Number(paise || 0) / 100).toLocaleString('en-IN')}`; }
   };
-
   const authRequired = () => {
     if (api.isAuthenticated()) return true;
     api.setAuthRequiredMessage?.('Sign in to use your cart.');
     alert('Sign in to use your cart.');
     return false;
   };
-
   const productName = (item) => item.product_snapshot?.name || 'Origyn product';
   const productImage = (item) => item.product_snapshot?.image || '';
 
@@ -52,17 +50,29 @@ document.addEventListener('DOMContentLoaded', () => {
     try { cart = await api.get('/api/cart'); render(); }
     catch (error) { console.warn('Cart could not be loaded:', error.message); }
   };
-
   const openCart = () => { cartDrawer.classList.add('open'); loadCart(); };
   const closeCart = () => cartDrawer.classList.remove('open');
 
   document.querySelector('#cart-open')?.addEventListener('click', (event) => { event.preventDefault(); openCart(); });
   document.querySelector('#cart-close')?.addEventListener('click', closeCart);
 
-  const addToCart = async (product) => {
+  const resolveSelectedProduct = async () => {
+    const name = document.querySelector('#modal-name')?.textContent?.trim();
+    if (!name) return null;
+    const response = await api.get(`/api/products?q=${encodeURIComponent(name)}&limit=10`);
+    const matches = Array.isArray(response?.data) ? response.data : [];
+    const exact = matches.find((product) => product.name === name);
+    return exact || matches[0] || null;
+  };
+
+  const addToCart = async () => {
     if (!authRequired()) return;
-    const variantId = product.variants?.length === 1 ? product.variants[0].id : null;
     try {
+      const product = await resolveSelectedProduct();
+      if (!product?.id) throw new Error('Could not identify this product. Please reopen the product and try again.');
+      selectedProductId = product.id;
+      const variants = Array.isArray(product.variants) ? product.variants : [];
+      const variantId = variants.length === 1 ? variants[0].id : null;
       cart = await api.post('/api/cart/items', { product_id: product.id, variant_id: variantId, quantity: 1 });
       render();
       openCart();
@@ -75,7 +85,6 @@ document.addEventListener('DOMContentLoaded', () => {
     try { cart = await api.patch(`/api/cart/items/${encodeURIComponent(itemId)}`, { quantity }); render(); }
     catch (error) { alert(error.message || 'Could not update cart quantity.'); }
   };
-
   const removeItem = async (itemId) => {
     try { await api.delete(`/api/cart/items/${encodeURIComponent(itemId)}`); await loadCart(); }
     catch (error) { alert(error.message || 'Could not remove the item.'); }
@@ -94,32 +103,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (modalAdd) {
     modalAdd.addEventListener('click', (event) => {
+      event.preventDefault();
       event.stopImmediatePropagation();
-      if (selected) addToCart(selected);
+      addToCart();
     }, true);
   }
 
-  // store-api.js keeps the selected product private, so capture product-open clicks
-  // and obtain the authoritative product before adding it to the persistent cart.
-  document.addEventListener('click', async (event) => {
-    const button = event.target.closest('[data-product]');
-    if (!button || button === modalAdd) return;
-    // The modal is opened by store-api.js. We intentionally don't add here.
-  }, true);
-
-  const observeModal = () => {
-    const modal = document.querySelector('#product-modal');
-    if (!modal) return;
+  // Keep selected product ID available for future checkout integrations.
+  const modal = document.querySelector('#product-modal');
+  if (modal) {
     const observer = new MutationObserver(() => {
-      if (!modal.classList.contains('open')) return;
-      const name = document.querySelector('#modal-name')?.textContent?.trim();
-      if (!name) return;
-      // Match the displayed modal against the already-loaded Store product list.
-      const source = window.origynStoreProducts;
-      if (Array.isArray(source)) selected = source.find((p) => p.n === name) || null;
+      if (!modal.classList.contains('open')) selectedProductId = null;
     });
     observer.observe(modal, { attributes: true, attributeFilter: ['class'] });
-  };
-  observeModal();
+  }
+
   loadCart();
 });
