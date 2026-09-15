@@ -5,7 +5,7 @@ const {authenticate,requireRole}=require('../middleware/auth');
 const {finalizeCapturedPayment}=require('../services/commerceService');
 const router=express.Router();
 
-function parsePaise(value,field){
+function parsePaise(value){
   if(value===undefined||value===null||!/^\d+$/.test(String(value))) return null;
   const n=Number(value);
   if(!Number.isSafeInteger(n)||n<0) return null;
@@ -37,11 +37,11 @@ router.post('/webhooks/:provider',async(req,res,next)=>{
     const {provider_payment_id,status,order_id,amount_paise,currency,provider_refund_id,refund_amount_paise}=req.body;
     if(!order_id||!['authorized','captured','failed','cancelled','refunded','partially_refunded'].includes(status))return res.status(400).json({error:'Invalid payment event'});
     if(['captured','refunded','partially_refunded'].includes(status)&&!provider_payment_id)return res.status(400).json({error:'provider_payment_id is required for this payment event'});
-    const webhookAmount=amount_paise===undefined?null:parsePaise(amount_paise,'amount_paise');
+    const webhookAmount=amount_paise===undefined?null:parsePaise(amount_paise);
     if(amount_paise!==undefined&&webhookAmount===null)return res.status(400).json({error:'Invalid payment amount'});
     if(currency!==undefined&&(!/^[A-Za-z]{3}$/.test(String(currency))))return res.status(400).json({error:'Invalid payment currency'});
     if(['refunded','partially_refunded'].includes(status)&&!provider_refund_id)return res.status(400).json({error:'provider_refund_id is required for refund events'});
-    const refundAmount=refund_amount_paise===undefined?null:parsePaise(refund_amount_paise,'refund_amount_paise');
+    const refundAmount=refund_amount_paise===undefined?null:parsePaise(refund_amount_paise);
     if(refund_amount_paise!==undefined&&refundAmount===null)return res.status(400).json({error:'Invalid refund amount'});
     if(status==='partially_refunded'&&(!refundAmount||refundAmount<=0))return res.status(400).json({error:'refund_amount_paise is required for partial refunds'});
 
@@ -65,10 +65,11 @@ router.post('/webhooks/:provider',async(req,res,next)=>{
       if(!sameState&&!allowed[stored.status]?.includes(status))throw Object.assign(new Error(`Invalid payment state transition: ${stored.status} -> ${status}`),{status:409});
 
       if(['refunded','partially_refunded'].includes(status)){
-        const existingRefund=await client.query('SELECT id,status,amount_paise FROM refunds WHERE provider_refund_id=$1 LIMIT 1',[provider_refund_id]);
+        const existingRefund=await client.query('SELECT id,payment_id,status,amount_paise FROM refunds WHERE provider_refund_id=$1 LIMIT 1',[provider_refund_id]);
         if(existingRefund.rowCount){
           if(existingRefund.rows[0].payment_id!==stored.id)throw Object.assign(new Error('Provider refund ID is already associated with another payment'),{status:409});
         }else{
+          if(stored.status==='refunded')throw Object.assign(new Error('Payment is already fully refunded'),{status:409});
           const totals=await client.query(`SELECT COALESCE(SUM(amount_paise) FILTER (WHERE status IN ('pending','succeeded')),0) AS refunded_paise FROM refunds WHERE payment_id=$1`,[stored.id]);
           const remaining=Number(stored.amount_paise)-Number(totals.rows[0].refunded_paise||0);
           const amount=status==='partially_refunded'?refundAmount:remaining;
@@ -92,7 +93,7 @@ router.post('/webhooks/:provider',async(req,res,next)=>{
 
 router.post('/orders/:orderId/refunds',authenticate,requireRole('admin'),async(req,res,next)=>{
   try{
-    const amount=parsePaise(req.body.amount_paise,'amount_paise');
+    const amount=parsePaise(req.body.amount_paise);
     const reason=req.body.reason===undefined||req.body.reason===null?null:String(req.body.reason).trim();
     if(amount===null||amount<=0)return res.status(400).json({error:'amount_paise must be a positive integer'});
     if(reason&&reason.length>1000)return res.status(400).json({error:'reason must be at most 1000 characters'});
