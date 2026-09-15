@@ -2,8 +2,16 @@ const express = require('express');
 const crypto = require('crypto');
 const pool = require('../config/db');
 const { authenticate, requireRole } = require('../middleware/auth');
-const { finalizeCapturedPayment } = require('../services/commerceService');
+const { finalizeCapturedPayment, releaseOrderReservations, httpError } = require('../services/commerceService');
 const router = express.Router();
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const MAX_PROVIDER_LENGTH = 100;
+
+function requireUuid(value, field) {
+  if (typeof value !== 'string' || !UUID_RE.test(value)) throw httpError(`${field} must be a valid UUID`);
+  return value;
+}
 
 function parsePaise(value) {
   if (value === undefined || value === null || !/^\d+$/.test(String(value))) return null;
@@ -23,24 +31,29 @@ function parseProviderId(value, field) {
   return valueString;
 }
 
+function configuredProvider() {
+  const provider = String(process.env.PAYMENT_PROVIDER || '').trim();
+  if (!provider || provider.length > MAX_PROVIDER_LENGTH) return null;
+  return provider;
+}
+
 router.post('/orders/:orderId/initiate', authenticate, async (req, res, next) => {
   try {
-    const provider = String(process.env.PAYMENT_PROVIDER || 'pending-provider').trim();
-    if (!provider || provider.length > 100) {
-      return res.status(503).json({ error: 'Payment provider is not configured' });
-    }
+    const orderId = requireUuid(req.params.orderId, 'order id');
+    const provider = configuredProvider();
+    if (!provider) return res.status(503).json({ error: 'Payment provider is not configured' });
 
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
       const paymentResult = await client.query(`
         SELECT p.id, p.order_id, p.provider, p.amount_paise, p.currency, p.status,
-               o.payment_status, o.customer_id
+               o.payment_status, o.status AS order_status, o.customer_id
         FROM payments p
         JOIN orders o ON o.id = p.order_id
         WHERE p.order_id = $1 AND o.customer_id = $2
         FOR UPDATE OF p, o
-      `, [req.params.orderId, req.user.id]);
+      `, [orderId, req.user.id]);
 
       if (!paymentResult.rowCount) {
         await client.query('ROLLBACK');
@@ -48,7 +61,7 @@ router.post('/orders/:orderId/initiate', authenticate, async (req, res, next) =>
       }
 
       const payment = paymentResult.rows[0];
-      if (payment.payment_status !== 'pending' || !['pending', 'authorized'].includes(payment.status)) {
+      if (payment.payment_status !== 'pending' || payment.order_status !== 'pending' || !['pending', 'authorized'].includes(payment.status)) {
         await client.query('ROLLBACK');
         return res.status(409).json({ error: 'Payment is no longer pending' });
       }
@@ -56,6 +69,18 @@ router.post('/orders/:orderId/initiate', authenticate, async (req, res, next) =>
       if (payment.provider !== 'pending-provider' && payment.provider !== provider) {
         await client.query('ROLLBACK');
         return res.status(409).json({ error: 'Payment provider cannot be changed after initialization' });
+      }
+
+      const reservationResult = await client.query(
+        `SELECT COUNT(*)::int AS expired_count
+         FROM commerce_inventory_reservations
+         WHERE order_id=$1 AND status='active' AND expires_at <= NOW()`,
+        [orderId]
+      );
+      if (Number(reservationResult.rows[0].expired_count) > 0) {
+        await releaseOrderReservations(client, orderId, 'expired');
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: 'Inventory reservation has expired; please create a new checkout' });
       }
 
       const updated = await client.query(`
@@ -89,8 +114,12 @@ router.post('/webhooks/:provider', async (req, res, next) => {
     if (!ok) return res.status(401).json({ error: 'Invalid webhook credentials' });
 
     const provider = String(req.params.provider || '').trim();
-    if (!provider || provider.length > 100) return res.status(400).json({ error: 'Invalid payment provider' });
+    if (!provider || provider.length > MAX_PROVIDER_LENGTH) return res.status(400).json({ error: 'Invalid payment provider' });
+    const expectedProvider = configuredProvider();
+    if (!expectedProvider) return res.status(503).json({ error: 'Payment provider is not configured' });
+    if (provider !== expectedProvider) return res.status(409).json({ error: 'Payment provider mismatch' });
 
+    const body = req.body || {};
     const {
       provider_payment_id,
       status,
@@ -99,9 +128,10 @@ router.post('/webhooks/:provider', async (req, res, next) => {
       currency,
       provider_refund_id,
       refund_amount_paise
-    } = req.body;
+    } = body;
+    const orderId = requireUuid(order_id, 'order id');
 
-    if (!order_id || !['authorized', 'captured', 'failed', 'cancelled', 'refunded', 'partially_refunded'].includes(status)) {
+    if (!['authorized', 'captured', 'failed', 'cancelled', 'refunded', 'partially_refunded'].includes(status)) {
       return res.status(400).json({ error: 'Invalid payment event' });
     }
 
@@ -132,7 +162,7 @@ router.post('/webhooks/:provider', async (req, res, next) => {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      const paymentResult = await client.query('SELECT * FROM payments WHERE order_id = $1 FOR UPDATE', [order_id]);
+      const paymentResult = await client.query('SELECT * FROM payments WHERE order_id = $1 FOR UPDATE', [orderId]);
       if (!paymentResult.rowCount) throw Object.assign(new Error('Payment not found'), { status: 404 });
 
       const stored = paymentResult.rows[0];
@@ -198,8 +228,6 @@ router.post('/webhooks/:provider', async (req, res, next) => {
             throw Object.assign(new Error('Invalid refund amount'), { status: 409 });
           }
 
-          // If an admin already created a pending refund for exactly this provider refund amount,
-          // reconcile it instead of creating a second monetary refund record.
           const pendingMatches = await client.query(
             `SELECT id FROM refunds
              WHERE payment_id = $1 AND status = 'pending' AND amount_paise = $2
@@ -212,7 +240,7 @@ router.post('/webhooks/:provider', async (req, res, next) => {
               `UPDATE refunds
                SET status = 'succeeded', provider_refund_id = $1, provider_payload = $2::jsonb, updated_at = NOW()
                WHERE id = $3`,
-              [providerRefundId, JSON.stringify(req.body), pendingMatches.rows[0].id]
+              [providerRefundId, JSON.stringify(body), pendingMatches.rows[0].id]
             );
           } else if (pendingMatches.rowCount > 1) {
             throw Object.assign(new Error('Multiple pending refunds match this provider refund; manual reconciliation required'), { status: 409 });
@@ -220,7 +248,7 @@ router.post('/webhooks/:provider', async (req, res, next) => {
             await client.query(
               `INSERT INTO refunds(payment_id, order_id, amount_paise, status, provider_refund_id, provider_payload)
                VALUES($1, $2, $3, 'succeeded', $4, $5::jsonb)`,
-              [stored.id, order_id, amount, providerRefundId, JSON.stringify(req.body)]
+              [stored.id, orderId, amount, providerRefundId, JSON.stringify(body)]
             );
           }
         }
@@ -231,7 +259,7 @@ router.post('/webhooks/:provider', async (req, res, next) => {
            SET provider = $1, provider_payment_id = COALESCE($2, provider_payment_id), status = $3,
                provider_payload = $4::jsonb, updated_at = NOW()
            WHERE id = $5`,
-          [provider, providerPaymentId || null, newStatus, JSON.stringify(req.body), stored.id]
+          [provider, providerPaymentId || null, newStatus, JSON.stringify(body), stored.id]
         );
         await client.query(
           `UPDATE orders
@@ -240,26 +268,29 @@ router.post('/webhooks/:provider', async (req, res, next) => {
                fulfilment_status = CASE WHEN $1 = 'refunded' THEN 'refunded' ELSE fulfilment_status END,
                updated_at = NOW()
            WHERE id = $2`,
-          [newStatus, order_id]
+          [newStatus, orderId]
         );
       } else if (status === 'captured') {
-        await finalizeCapturedPayment(client, order_id, providerPaymentId, req.body);
+        await finalizeCapturedPayment(client, orderId, providerPaymentId, body);
       } else {
         await client.query(
           `UPDATE payments
            SET provider = $1, provider_payment_id = COALESCE($2, provider_payment_id), status = $3,
                provider_payload = $4::jsonb, updated_at = NOW()
            WHERE id = $5`,
-          [provider, providerPaymentId || null, status, JSON.stringify(req.body), stored.id]
+          [provider, providerPaymentId || null, status, JSON.stringify(body), stored.id]
         );
+        const orderUpdate = status === 'failed' || status === 'cancelled';
         await client.query(
           `UPDATE orders
            SET payment_status = $1,
-               status = CASE WHEN $1 = 'failed' AND status = 'pending' THEN 'cancelled' ELSE status END,
+               status = CASE WHEN $3 THEN 'cancelled' ELSE status END,
+               fulfilment_status = CASE WHEN $3 THEN 'cancelled' ELSE fulfilment_status END,
                updated_at = NOW()
            WHERE id = $2`,
-          [status, order_id]
+          [status, orderId, orderUpdate]
         );
+        if(orderUpdate) await releaseOrderReservations(client, orderId, status === 'cancelled' ? 'released' : 'released');
       }
 
       await client.query('COMMIT');
@@ -277,8 +308,10 @@ router.post('/webhooks/:provider', async (req, res, next) => {
 
 router.post('/orders/:orderId/refunds', authenticate, requireRole('admin'), async (req, res, next) => {
   try {
-    const amount = parsePaise(req.body.amount_paise);
-    const reason = req.body.reason === undefined || req.body.reason === null ? null : String(req.body.reason).trim();
+    const orderId = requireUuid(req.params.orderId, 'order id');
+    const body = req.body || {};
+    const amount = parsePaise(body.amount_paise);
+    const reason = body.reason === undefined || body.reason === null ? null : String(body.reason).trim();
     if (amount === null || amount <= 0) return res.status(400).json({ error: 'amount_paise must be a positive integer' });
     if (reason && reason.length > 1000) return res.status(400).json({ error: 'reason must be at most 1000 characters' });
 
@@ -292,7 +325,7 @@ router.post('/orders/:orderId/refunds', authenticate, requireRole('admin'), asyn
          FROM payments p
          WHERE p.order_id = $1
          FOR UPDATE`,
-        [req.params.orderId]
+        [orderId]
       );
       if (!paymentResult.rowCount) throw Object.assign(new Error('Payment not found'), { status: 404 });
 
@@ -305,7 +338,7 @@ router.post('/orders/:orderId/refunds', authenticate, requireRole('admin'), asyn
       const refund = await client.query(
         `INSERT INTO refunds(payment_id, order_id, amount_paise, reason, status)
          VALUES($1, $2, $3, $4, 'pending') RETURNING *`,
-        [payment.id, req.params.orderId, amount, reason]
+        [payment.id, orderId, amount, reason]
       );
       await client.query('COMMIT');
       res.status(201).json(refund.rows[0]);
