@@ -39,10 +39,10 @@ document.addEventListener('DOMContentLoaded', () => {
     mark: (p.name || 'O').slice(0, 3).toUpperCase(),
     seller: p.publisher_name || 'Origyn Marketplace',
     origin: p.ecosystem_status === 'origyn_owned' || p.ecosystem_status === 'origyn'
-      ? 'Origyn Original'
-      : p.ecosystem_status === 'origyn_member'
-        ? 'Origyn Ecosystem'
-        : 'Marketplace',
+  ? 'Origyn Original'
+  : p.ecosystem_status === 'origyn_member'
+    ? 'Origyn Ecosystem'
+    : 'Marketplace',
     d: p.description || 'Discover this product on Origyn.',
     image: Array.isArray(p.images) && p.images.length ? p.images[0]?.url || p.images[0] : '',
     rating: Number(p.rating_average || 0),
