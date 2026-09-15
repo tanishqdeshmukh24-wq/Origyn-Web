@@ -227,28 +227,51 @@ router.post('/webhooks/:provider', async (req, res, next) => {
           }
 
           const totals = await client.query(
-            `SELECT COALESCE(SUM(amount_paise) FILTER (WHERE status IN ('pending', 'succeeded')), 0) AS refunded_paise
+            `SELECT
+               COALESCE(SUM(amount_paise) FILTER (WHERE status = 'succeeded'), 0) AS succeeded_paise,
+               COALESCE(SUM(amount_paise) FILTER (WHERE status = 'pending'), 0) AS pending_paise
              FROM refunds WHERE payment_id = $1`,
             [stored.id]
           );
-          const refundedBefore = Number(totals.rows[0].refunded_paise || 0);
-          const remaining = Number(stored.amount_paise) - refundedBefore;
-          const amount = status === 'partially_refunded' ? refundAmount : (refundAmount ?? remaining);
-          if (!Number.isSafeInteger(amount) || amount <= 0 || amount > remaining) {
+          const succeededBefore = Number(totals.rows[0].succeeded_paise || 0);
+          const pendingBefore = Number(totals.rows[0].pending_paise || 0);
+          const refundableRemaining = Number(stored.amount_paise) - succeededBefore;
+
+          let amount = status === 'partially_refunded' ? refundAmount : refundAmount;
+          let pendingMatches;
+
+          if (status === 'refunded' && refundAmount === null) {
+            const pendingResult = await client.query(
+              `SELECT id, amount_paise FROM refunds
+               WHERE payment_id = $1 AND status = 'pending'
+               ORDER BY created_at ASC FOR UPDATE`,
+              [stored.id]
+            );
+            if (pendingResult.rowCount > 1) {
+              throw Object.assign(new Error('Multiple pending refunds exist; full refund webhook amount is required for reconciliation'), { status: 409 });
+            }
+            amount = pendingResult.rowCount === 1 ? Number(pendingResult.rows[0].amount_paise) : refundableRemaining;
+            pendingMatches = pendingResult;
+          } else {
+            pendingMatches = await client.query(
+              `SELECT id, amount_paise FROM refunds
+               WHERE payment_id = $1 AND status = 'pending' AND amount_paise = $2
+               ORDER BY created_at ASC FOR UPDATE`,
+              [stored.id, amount]
+            );
+          }
+
+          if (!Number.isSafeInteger(amount) || amount <= 0 || amount > refundableRemaining) {
             throw Object.assign(new Error('Invalid refund amount'), { status: 409 });
           }
-          if (status === 'refunded' && amount !== remaining) {
+          if (status === 'refunded' && succeededBefore + amount !== Number(stored.amount_paise)) {
             throw Object.assign(new Error('Full refund amount must equal the remaining refundable balance'), { status: 409 });
           }
 
-          const pendingMatches = await client.query(
-            `SELECT id FROM refunds
-             WHERE payment_id = $1 AND status = 'pending' AND amount_paise = $2
-             ORDER BY created_at ASC FOR UPDATE`,
-            [stored.id, amount]
-          );
-
           if (pendingMatches.rowCount === 1) {
+            if (Number(pendingMatches.rows[0].amount_paise) !== amount) {
+              throw Object.assign(new Error('Pending refund amount does not match provider refund amount'), { status: 409 });
+            }
             refundId = pendingMatches.rows[0].id;
             await client.query(
               `UPDATE refunds
