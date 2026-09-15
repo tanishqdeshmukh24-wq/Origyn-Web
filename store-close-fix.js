@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(!modal||!card||!close)return;
 
   const apply=()=>{
-    Object.assign(close.style,{
+    const values={
       position:'absolute',
       top:'14px',
       right:'14px',
@@ -17,11 +17,12 @@ document.addEventListener('DOMContentLoaded',()=>{
       margin:'0',
       padding:'0',
       display:'flex',
-      alignItems:'center',
-      justifyContent:'center',
-      zIndex:'10000',
+      'align-items':'center',
+      'justify-content':'center',
+      'z-index':'10000',
       transform:'none'
-    });
+    };
+    Object.entries(values).forEach(([property,value])=>close.style.setProperty(property,value,'important'));
   };
 
   apply();
