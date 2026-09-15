@@ -296,3 +296,78 @@ test('commerce events reject oversized metadata', async () => {
   });
   assert.equal(response.response.status, 413);
 });
+
+test('payment and refund state machine rejects conflicting refund replays and supports multiple partial refunds', async () => {
+  const admin = await api('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({ email: `admin-${crypto.randomUUID()}@example.test`, password: 'Integration123', name: 'Admin User' })
+  });
+  assert.equal(admin.response.status, 201);
+  const adminId = admin.body.user.id;
+  await db.query("UPDATE users SET role='admin' WHERE id=$1", [adminId]);
+  const adminToken = admin.body.token;
+
+  const firstRefund = await apiAs(adminToken, `/api/payments/orders/${orderId}/refunds`, {
+    method: 'POST',
+    body: JSON.stringify({ amount_paise: 1000, reason: 'first partial refund' })
+  });
+  assert.equal(firstRefund.response.status, 201);
+
+  const firstWebhook = await api('/api/payments/webhooks/test-provider', {
+    method: 'POST',
+    headers: { 'x-origyn-webhook-secret': WEBHOOK_SECRET },
+    body: JSON.stringify({ order_id: orderId, provider_payment_id: 'test-payment-1', provider_refund_id: 'refund-1', status: 'partially_refunded', refund_amount_paise: 1000 })
+  });
+  assert.equal(firstWebhook.response.status, 200);
+
+  const replay = await api('/api/payments/webhooks/test-provider', {
+    method: 'POST',
+    headers: { 'x-origyn-webhook-secret': WEBHOOK_SECRET },
+    body: JSON.stringify({ order_id: orderId, provider_payment_id: 'test-payment-1', provider_refund_id: 'refund-1', status: 'partially_refunded', refund_amount_paise: 1000 })
+  });
+  assert.equal(replay.response.status, 200);
+
+  const conflictingReplay = await api('/api/payments/webhooks/test-provider', {
+    method: 'POST',
+    headers: { 'x-origyn-webhook-secret': WEBHOOK_SECRET },
+    body: JSON.stringify({ order_id: orderId, provider_payment_id: 'test-payment-1', provider_refund_id: 'refund-1', status: 'partially_refunded', refund_amount_paise: 999 })
+  });
+  assert.equal(conflictingReplay.response.status, 409);
+
+  const secondRefund = await apiAs(adminToken, `/api/payments/orders/${orderId}/refunds`, {
+    method: 'POST',
+    body: JSON.stringify({ amount_paise: 2000, reason: 'second partial refund' })
+  });
+  assert.equal(secondRefund.response.status, 201, 'admin must be able to create a second partial refund');
+
+  const secondWebhook = await api('/api/payments/webhooks/test-provider', {
+    method: 'POST',
+    headers: { 'x-origyn-webhook-secret': WEBHOOK_SECRET },
+    body: JSON.stringify({ order_id: orderId, provider_payment_id: 'test-payment-1', provider_refund_id: 'refund-2', status: 'partially_refunded', refund_amount_paise: 2000 })
+  });
+  assert.equal(secondWebhook.response.status, 200);
+
+  const stateAfterPartials = await db.query('SELECT status FROM payments WHERE order_id=$1', [orderId]);
+  assert.equal(stateAfterPartials.rows[0].status, 'partially_refunded');
+
+  const remaining = 399800 - 1000 - 2000;
+  const finalRefund = await apiAs(adminToken, `/api/payments/orders/${orderId}/refunds`, {
+    method: 'POST',
+    body: JSON.stringify({ amount_paise: remaining, reason: 'final refund' })
+  });
+  assert.equal(finalRefund.response.status, 201);
+
+  const finalWebhook = await api('/api/payments/webhooks/test-provider', {
+    method: 'POST',
+    headers: { 'x-origyn-webhook-secret': WEBHOOK_SECRET },
+    body: JSON.stringify({ order_id: orderId, provider_payment_id: 'test-payment-1', provider_refund_id: 'refund-3', status: 'refunded' })
+  });
+  assert.equal(finalWebhook.response.status, 200);
+
+  const finalState = await db.query('SELECT status FROM payments WHERE order_id=$1', [orderId]);
+  assert.equal(finalState.rows[0].status, 'refunded');
+
+  const refunds = await db.query("SELECT COUNT(*)::int AS count, COALESCE(SUM(amount_paise),0) AS total FROM refunds WHERE order_id=$1 AND status='succeeded'", [orderId]);
+  assert.equal(refunds.rows[0].count, 3);
+  assert.equal(Number(refunds.rows[0].total), 399800);
+});
