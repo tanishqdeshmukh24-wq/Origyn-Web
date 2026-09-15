@@ -1,4 +1,7 @@
 /* Origyn Store persistent cart integration. Loaded after the Store UI scripts. */
+if (!document.querySelector('script[data-origyn-reviews]')) {
+  document.write('<script src="store-reviews.js" data-origyn-reviews="true"><\/script>');
+}
 document.addEventListener('DOMContentLoaded', () => {
   'use strict';
   const api = window.OrigynAPI;
@@ -109,7 +112,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }, true);
   }
 
-  // Keep selected product ID available for future checkout integrations.
   const modal = document.querySelector('#product-modal');
   if (modal) {
     const observer = new MutationObserver(() => {
