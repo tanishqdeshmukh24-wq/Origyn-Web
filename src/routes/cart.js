@@ -5,6 +5,12 @@ const { getProductForCommerce, currentUnitPrice, availability, recordEvent, http
 
 const router = express.Router();
 router.use(authenticate);
+const UUID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function requireUuid(value,field){
+  if(typeof value!=='string'||!UUID_RE.test(value)) throw httpError(`${field} must be a valid UUID`);
+  return value;
+}
 
 async function cartResponse(userId) {
   const result = await pool.query(`SELECT ci.id,ci.product_id,ci.variant_id,ci.quantity,ci.unit_price_paise,ci.product_snapshot,ci.variant_snapshot,ci.created_at,ci.updated_at,p.status,p.currency FROM cart_items ci JOIN products p ON p.id=ci.product_id WHERE ci.user_id=$1 ORDER BY ci.created_at`, [userId]);
@@ -21,14 +27,18 @@ router.post('/items', async (req, res, next) => {
   const client = await pool.connect();
   try {
     const { product_id, variant_id = null, quantity = 1 } = req.body;
-    if (!product_id || !Number.isInteger(quantity) || quantity < 1 || quantity > 1000) throw httpError('product_id and a valid quantity are required');
+    requireUuid(product_id,'product_id');
+    if(variant_id!==null) requireUuid(variant_id,'variant_id');
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 1000) throw httpError('product_id and a valid quantity are required');
     await client.query('BEGIN');
-    const { product, variant } = await getProductForCommerce(client, product_id, variant_id, false);
-    if (!availability(product, variant, quantity)) throw httpError('Insufficient inventory', 409);
+    const { product, variant } = await getProductForCommerce(client, product_id, variant_id, true);
+    const existing=await client.query(`SELECT quantity FROM cart_items WHERE user_id=$1 AND product_id=$2 AND variant_id IS NOT DISTINCT FROM $3 FOR UPDATE`,[req.user.id,product_id,variant_id]);
+    const newQuantity=Number(existing.rows[0]?.quantity||0)+quantity;
+    if(newQuantity>1000) throw httpError('Cart quantity cannot exceed 1000',409);
+    if (!availability(product, variant, newQuantity)) throw httpError('Insufficient inventory', 409);
     const price = currentUnitPrice(product, variant);
     const snapshot = { id: product.id, name: product.name, product_type: product.product_type, currency: product.currency, price_paise: price, image: product.primary_image };
     const result = await client.query(`INSERT INTO cart_items(user_id,product_id,variant_id,quantity,unit_price_paise,product_snapshot,variant_snapshot) VALUES($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb) ON CONFLICT (user_id,product_id,COALESCE(variant_id,'00000000-0000-0000-0000-000000000000'::uuid)) DO UPDATE SET quantity=cart_items.quantity+EXCLUDED.quantity,unit_price_paise=EXCLUDED.unit_price_paise,product_snapshot=EXCLUDED.product_snapshot,variant_snapshot=EXCLUDED.variant_snapshot,updated_at=NOW() RETURNING *`, [req.user.id, product_id, variant_id, quantity, price, JSON.stringify(snapshot), variant ? JSON.stringify(variant) : null]);
-    if (Number(result.rows[0].quantity) > 1000) throw httpError('Cart quantity cannot exceed 1000', 409);
     await client.query('COMMIT');
     await recordEvent({ userId: req.user.id, eventType: 'cart_item_added', productId: product_id, categoryId: product.category_id, metadata: { quantity } });
     res.status(201).json(await cartResponse(req.user.id));
