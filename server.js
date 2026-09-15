@@ -47,10 +47,6 @@ app.get('/', (_req, res) => res.json({ message: 'Origyn backend is running!', ve
 app.get('/api/health', async (_req, res, next) => {
   try { await pool.query('SELECT 1'); res.json({ status: 'ok' }); } catch (error) { next(error); }
 });
-app.get('/api/technologies', async (_req, res, next) => {
-  try { const result = await pool.query('SELECT * FROM technologies ORDER BY id DESC'); res.json(result.rows); }
-  catch (error) { next(error); }
-});
 
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
