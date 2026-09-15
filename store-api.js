@@ -1,12 +1,12 @@
 /* Origyn Store API integration.
- * Keeps the existing Store presentation but replaces demo product data with
- * published products from the common backend. Cart/checkout remain local
- * until their dedicated integration phases. Wishlist is server-backed.
+ * Replaces the demo product dataset with published products from Ninad's backend
+ * while preserving the existing Store presentation and local cart/wishlist UX.
  */
 document.addEventListener('DOMContentLoaded', () => {
   'use strict';
 
   const $ = (selector) => document.querySelector(selector);
+  const $$ = (selector) => [...document.querySelectorAll(selector)];
   const grid = $('#store-grid');
   if (!grid || !window.OrigynAPI) return;
 
@@ -17,13 +17,15 @@ document.addEventListener('DOMContentLoaded', () => {
   let selected = null;
   let cart = [];
   let saved = new Set();
+  let savedView = false;
   let searchTimer = null;
+  let searchStarted = false;
 
   const money = (paise, currency = 'INR') => {
     const value = Number(paise || 0) / 100;
     try {
       return new Intl.NumberFormat('en-IN', { style: 'currency', currency }).format(value);
-    } catch (_error) {
+    } catch (_) {
       return `${currency} ${value.toLocaleString('en-IN')}`;
     }
   };
@@ -36,21 +38,22 @@ document.addEventListener('DOMContentLoaded', () => {
     p: Number(p.price_paise || 0),
     mark: (p.name || 'O').slice(0, 3).toUpperCase(),
     seller: p.publisher_name || 'Origyn Marketplace',
-    origin: p.ecosystem_status === 'origyn' ? 'Origyn Original'
-      : p.ecosystem_status === 'origyn_member' ? 'Origyn Ecosystem'
-      : 'Marketplace',
+    origin: p.ecosystem_status === 'origyn_owned' || p.ecosystem_status === 'origyn'
+      ? 'Origyn Original'
+      : p.ecosystem_status === 'origyn_member'
+        ? 'Origyn Ecosystem'
+        : 'Marketplace',
     d: p.description || 'Discover this product on Origyn.',
-    image: Array.isArray(p.images) && p.images.length ? p.images[0] : '',
+    image: Array.isArray(p.images) && p.images.length ? p.images[0]?.url || p.images[0] : '',
     rating: Number(p.rating_average || 0),
     reviews: Number(p.rating_count || 0),
-    stock: Number(p.stock || 0),
-    variants: Array.isArray(p.variants) ? p.variants : [],
+    stock: p.inventory?.stock == null ? null : Number(p.inventory.stock),
     created: p.created_at || '',
-    featured: p.ecosystem_status === 'origyn' || p.ecosystem_status === 'origyn_member' || index < 3
+    featured: p.ecosystem_status === 'origyn_owned' || p.ecosystem_status === 'origyn' || p.ecosystem_status === 'origyn_member' || index < 3
   });
 
   const setLoading = (message) => {
-    grid.innerHTML = `<div class="store-empty-state"><p>${message}</p></div>`;
+    grid.innerHTML = `<div class="search-empty-state"><div class="saved-empty-icon">⌕</div><h3>${message}</h3></div>`;
   };
 
   const loadProducts = async () => {
@@ -58,184 +61,267 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const response = await window.OrigynAPI.get('/api/products?limit=100');
       products = (response.data || []).map(normalize);
-      await loadWishlist();
+      renderEcosystem();
       render();
     } catch (error) {
       console.error('Origyn Store product load failed:', error);
-      setLoading('Could not load products. Please make sure the Origyn API is running and try again.');
+      setLoading('Could not load products. Make sure the Origyn API is running.');
     }
   };
 
-  const loadWishlist = async () => {
-    saved = new Set();
-    try {
-      const response = await window.OrigynAPI.get('/api/wishlist');
-      (response.data || []).forEach((item) => {
-        if (item.product_id) saved.add(item.product_id);
-      });
-    } catch (error) {
-      if (error.status !== 401) console.warn('Wishlist could not be loaded:', error.message);
-    }
+  const score = (p, q) => {
+    if (!q) return 0;
+    const fields = [p.n, p.cat, p.type, p.seller, p.d].map((v) => String(v).toLowerCase());
+    let value = 0;
+    if (fields[0] === q) value += 100;
+    if (fields[0].startsWith(q)) value += 70;
+    if (fields[0].includes(q)) value += 45;
+    if (fields[1].includes(q)) value += 35;
+    if (fields[2].includes(q)) value += 25;
+    if (fields[3].includes(q)) value += 18;
+    if (fields[4].includes(q)) value += 10;
+    return value;
   };
 
-  const toggleWishlist = async (productId) => {
-    if (!window.OrigynAPI.isAuthenticated()) {
-      window.OrigynAPI.setAuthRequiredMessage?.('Sign in to save products to your wishlist.');
-      return;
-    }
-
-    const wasSaved = saved.has(productId);
-    try {
-      if (wasSaved) {
-        await window.OrigynAPI.delete(`/api/wishlist/${productId}`);
-        saved.delete(productId);
-      } else {
-        await window.OrigynAPI.post(`/api/wishlist/${productId}`);
-        saved.add(productId);
-      }
-      render();
-      if (selected && selected.id === productId) renderModal(selected);
-    } catch (error) {
-      console.error('Wishlist update failed:', error);
-      alert(error.message || 'Could not update your saved products.');
-    }
-  };
+  const card = (p) => `
+    <article class="product-card" data-id="${p.id}">
+      <div class="product-visual">
+        <span class="product-badge">${p.type}</span>
+        <button class="product-save ${saved.has(p.id) ? 'saved' : ''}" data-save="${p.id}" aria-label="${saved.has(p.id) ? 'Remove from saved' : 'Save product'}">${saved.has(p.id) ? '♥' : '♡'}</button>
+        ${p.image ? `<img class="product-api-image" src="${p.image}" alt="${p.n}" loading="lazy">` : `<span class="product-mark">${p.mark}</span>`}
+      </div>
+      <div class="product-body">
+        <span class="product-origin">${p.origin} · ${p.cat}</span>
+        <h3>${p.n}</h3>
+        <p>${p.d}</p>
+        <div class="product-foot">
+          <strong class="product-price">${money(p.p)}</strong>
+          <div class="product-actions">
+            <button class="mini-btn" data-view="${p.id}">View</button>
+            <button class="mini-btn dark" data-add="${p.id}">Add</button>
+          </div>
+        </div>
+      </div>
+    </article>`;
 
   const filtered = () => {
-    let list = products.filter((p) => {
-      const matchesFilter = filter === 'All' || p.cat === filter || p.type === filter;
-      const haystack = `${p.n} ${p.cat} ${p.type} ${p.seller} ${p.d}`.toLowerCase();
-      return matchesFilter && (!query || haystack.includes(query.toLowerCase()));
-    });
+    const q = query.toLowerCase().trim();
+    let list = products
+      .map((p) => ({ p, score: score(p, q) }))
+      .filter(({ p, score: matchScore }) => {
+        const categoryMatch = filter === 'All' || p.cat === filter;
+        return savedView ? categoryMatch && saved.has(p.id) : categoryMatch && (!q || matchScore > 0);
+      });
 
-    if (sort === 'low') list.sort((a, b) => a.p - b.p);
-    else if (sort === 'high') list.sort((a, b) => b.p - a.p);
-    else if (sort === 'newest') list.sort((a, b) => new Date(b.created) - new Date(a.created));
-    else list.sort((a, b) => Number(b.featured) - Number(a.featured));
-    return list;
+    if (q && !savedView) list.sort((a, b) => b.score - a.score || Number(b.p.featured) - Number(a.p.featured));
+    else if (sort === 'low') list.sort((a, b) => a.p.p - b.p.p);
+    else if (sort === 'high') list.sort((a, b) => b.p.p - a.p.p);
+    else if (sort === 'newest') list.sort((a, b) => new Date(b.p.created) - new Date(a.p.created));
+    else list.sort((a, b) => Number(b.p.featured) - Number(a.p.featured));
+
+    return list.map((x) => x.p);
   };
 
   const render = () => {
     const list = filtered();
     const count = $('#result-count');
-    if (count) count.textContent = `${list.length} product${list.length === 1 ? '' : 's'}`;
-    grid.innerHTML = list.length ? list.map((p) => `
-      <article class="product-card" data-id="${p.id}">
-        <button class="save-product ${saved.has(p.id) ? 'saved' : ''}" data-save="${p.id}" aria-label="${saved.has(p.id) ? 'Remove from saved' : 'Save product'}">${saved.has(p.id) ? '♥' : '♡'}</button>
-        <button class="product-card-main" data-product="${p.id}">
-          <div class="product-image">${p.image ? `<img src="${p.image}" alt="${p.n}" loading="lazy">` : `<span>${p.mark}</span>`}</div>
-          <div class="product-card-copy"><small>${p.cat} · ${p.origin}</small><h3>${p.n}</h3><p>${p.seller}</p><strong>${money(p.p)}</strong></div>
-        </button>
-      </article>
-    `).join('') : '<div class="store-empty-state"><p>No products match your search.</p></div>';
+    if (count) count.textContent = savedView
+      ? `${list.length} saved product${list.length === 1 ? '' : 's'}`
+      : `${list.length} product${list.length === 1 ? '' : 's'}`;
 
-    grid.querySelectorAll('[data-product]').forEach((button) => {
-      button.addEventListener('click', () => openProduct(button.dataset.product));
+    if (!list.length) {
+      grid.innerHTML = `<div class="saved-empty search-empty-state"><div class="saved-empty-icon">⌕</div><h3>${savedView ? 'Nothing saved yet' : 'No products found'}</h3><p>${savedView ? 'Tap the ♡ on any product to save it here.' : 'We couldn’t find a product matching your search.'}</p>${!savedView && query ? '<small class="search-hint">Try a different spelling, category, or product name.</small>' : ''}${savedView ? '<button class="primary-btn" id="browse-saved-products">Browse products →</button>' : ''}</div>`;
+    } else {
+      grid.innerHTML = list.map(card).join('');
+    }
+
+    bindGrid();
+  };
+
+  const renderEcosystem = () => {
+    const root = $('#ecosystem-grid');
+    if (!root) return;
+    const featured = products.filter((p) => p.origin !== 'Marketplace').slice(0, 4);
+    root.innerHTML = featured.map((p, i) => `
+      <article class="ecosystem-card">
+        <div class="card-meta"><span>${p.origin}</span><span>0${i + 1}</span></div>
+        <div><div class="card-mark">${p.mark}</div><h3>${p.n}</h3><p>${p.d}</p></div>
+      </article>`).join('');
+  };
+
+  const bindGrid = () => {
+    grid.querySelectorAll('[data-view]').forEach((button) => button.addEventListener('click', () => openProduct(button.dataset.view)));
+    grid.querySelectorAll('[data-add]').forEach((button) => button.addEventListener('click', () => add(button.dataset.add)));
+    grid.querySelectorAll('[data-save]').forEach((button) => button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const id = button.dataset.save;
+      saved.has(id) ? saved.delete(id) : saved.add(id);
+      render();
+      updateSavedCount();
+    }));
+    $('#browse-saved-products')?.addEventListener('click', () => {
+      savedView = false;
+      render();
     });
-    grid.querySelectorAll('[data-save]').forEach((button) => {
-      button.addEventListener('click', (event) => {
-        event.stopPropagation();
-        toggleWishlist(button.dataset.save);
-      });
-    });
+  };
+
+  const add = (id) => {
+    const product = products.find((p) => p.id === id);
+    if (!product) return;
+    const item = cart.find((x) => x.p.id === id);
+    item ? item.q++ : cart.push({ p: product, q: 1 });
+    renderCart();
+    $('#cart')?.classList.add('open');
+  };
+
+  const renderCart = () => {
+    const box = $('#cart-items');
+    if (!box) return;
+    if (!cart.length) box.innerHTML = '<div class="cart-empty">Your cart is empty.<br>Find something worth owning.</div>';
+    else box.innerHTML = cart.map((x, i) => `<div class="cart-row"><div><h4>${x.p.n}</h4><p>${money(x.p.p)} · ${x.q}</p><div class="cart-controls"><button data-dec="${i}">−</button><button data-inc="${i}">+</button><button data-rem="${i}">×</button></div></div><strong>${money(x.p.p * x.q)}</strong></div>`).join('');
+    const total = cart.reduce((sum, x) => sum + x.p.p * x.q, 0);
+    $('#cart-total') && ($('#cart-total').textContent = money(total));
+    $('#cart-count') && ($('#cart-count').textContent = cart.reduce((sum, x) => sum + x.q, 0));
+  };
+
+  const updateSavedCount = () => {
+    const el = $('#saved-count');
+    if (el) el.textContent = saved.size;
   };
 
   const openProduct = async (id) => {
+    let product = products.find((p) => p.id === id);
     try {
       const response = await window.OrigynAPI.get(`/api/products/${id}`);
-      selected = normalize(response.data || response);
-      renderModal(selected);
+      product = normalize(response.data || response, 0);
     } catch (error) {
-      const product = products.find((p) => p.id === id);
-      if (product) {
-        selected = product;
-        renderModal(product);
-      }
+      console.warn('Product detail API request failed; using listing data:', error);
     }
+    if (!product) return;
+    selected = product;
+    $('#modal-badge').textContent = `${product.origin} · ${product.cat} · ${product.type}`;
+    $('#modal-name').textContent = product.n;
+    $('#modal-description').textContent = product.d;
+    $('#modal-seller').textContent = product.seller;
+    $('#modal-price').textContent = money(product.p);
+    $('#modal-image').innerHTML = product.image ? `<img src="${product.image}" alt="${product.n}">` : `<span>${product.mark}</span>`;
+
+    const related = products
+      .filter((p) => p.id !== product.id)
+      .map((p) => ({ p, score: (p.cat === product.cat ? 40 : 0) + (p.type === product.type ? 25 : 0) + (p.origin === product.origin ? 15 : 0) + p.rating }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3);
+    let rec = $('#modal-recommendations');
+    if (!rec) {
+      rec = document.createElement('div');
+      rec.id = 'modal-recommendations';
+      rec.className = 'modal-recommendations';
+      $('.modal-card')?.appendChild(rec);
+    }
+    rec.innerHTML = `<div class="modal-recommend-head"><span>YOU MAY ALSO LIKE</span><b>Similar products</b></div><div class="modal-recommend-grid">${related.map((x) => `<button class="modal-recommend" data-related="${x.p.id}"><span>${x.p.mark}</span><strong>${x.p.n}</strong><small>${money(x.p.p)}</small></button>`).join('')}</div>`;
+    rec.querySelectorAll('[data-related]').forEach((button) => button.addEventListener('click', () => openProduct(button.dataset.related)));
+    $('#product-modal')?.classList.add('open');
+    document.body.classList.add('modal-open');
   };
 
-  const renderModal = (p) => {
-    $('#modal-badge').textContent = `${p.cat} · ${p.origin}`;
-    $('#modal-name').textContent = p.n;
-    $('#modal-description').textContent = p.d;
-    $('#modal-seller').textContent = p.seller;
-    $('#modal-price').textContent = money(p.p);
-    $('#modal-image').innerHTML = p.image ? `<img src="${p.image}" alt="${p.n}">` : `<span>${p.mark}</span>`;
-    const addButton = $('#modal-add');
-    if (addButton) addButton.textContent = saved.has(p.id) ? 'Saved ✓' : 'Add to cart →';
-    $('#product-modal').classList.add('open');
+  const syncSearch = (value) => {
+    query = value.trim();
+    const storeSearch = $('#store-search');
+    const topSearch = $('#top-search');
+    if (storeSearch && storeSearch.value !== value) storeSearch.value = value;
+    if (topSearch && topSearch.value !== value) topSearch.value = value;
+    savedView = false;
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      render();
+      if (query && !searchStarted) {
+        searchStarted = true;
+        const target = grid.querySelector('.product-card') || grid.querySelector('.search-empty-state');
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      if (!query) searchStarted = false;
+    }, 150);
   };
 
-  $('#modal-close')?.addEventListener('click', () => $('#product-modal').classList.remove('open'));
-  $('#product-modal')?.addEventListener('click', (event) => {
-    if (event.target.id === 'product-modal') $('#product-modal').classList.remove('open');
-  });
-
-  $('#modal-add')?.addEventListener('click', () => {
-    if (selected) toggleWishlist(selected.id);
-  });
-
-  $('#store-search')?.addEventListener('input', (event) => {
-    query = event.target.value.trim();
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(render, 150);
-  });
-  $('#top-search')?.addEventListener('input', (event) => {
-    query = event.target.value.trim();
-    const input = $('#store-search');
-    if (input) input.value = event.target.value;
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(render, 150);
-  });
-  $('#clear-search')?.addEventListener('click', () => {
-    query = '';
-    if ($('#store-search')) $('#store-search').value = '';
-    if ($('#top-search')) $('#top-search').value = '';
+  const setFilter = (value) => {
+    savedView = false;
+    filter = value;
+    $$('.quick-filters .filter').forEach((button) => button.classList.toggle('active', button.dataset.filter === value));
     render();
-  });
-  $('#sort-products')?.addEventListener('change', (event) => {
-    sort = event.target.value;
-    render();
-  });
-  document.querySelectorAll('.quick-filters .filter').forEach((button) => {
-    button.addEventListener('click', () => {
-      document.querySelectorAll('.quick-filters .filter').forEach((b) => b.classList.remove('active'));
-      button.classList.add('active');
-      filter = button.dataset.filter;
-      render();
-    });
-  });
+  };
 
-  document.querySelectorAll('[data-category]').forEach((button) => {
-    button.addEventListener('click', () => {
-      filter = button.dataset.category;
-      document.querySelectorAll('.quick-filters .filter').forEach((b) => b.classList.toggle('active', b.dataset.filter === filter));
-      document.querySelector('#discover')?.scrollIntoView({ behavior: 'smooth' });
-      render();
-    });
-  });
+  // Capture-phase handlers prevent the old demo Store listeners from fighting the API-backed Store.
+  document.addEventListener('click', (event) => {
+    const filterButton = event.target.closest('.quick-filters .filter');
+    const categoryButton = event.target.closest('[data-category]');
+    const viewButton = event.target.closest('[data-view]');
+    const addButton = event.target.closest('[data-add]');
+    const saveButton = event.target.closest('[data-save]');
+    const relatedButton = event.target.closest('[data-related]');
 
-  $('#wishlist-open')?.addEventListener('click', () => {
-    if (!window.OrigynAPI.isAuthenticated()) {
-      window.OrigynAPI.setAuthRequiredMessage?.('Sign in to view your saved products.');
+    if (filterButton || categoryButton || viewButton || addButton || saveButton || relatedButton) {
+      event.stopPropagation();
+      if (filterButton) setFilter(filterButton.dataset.filter);
+      else if (categoryButton) { setFilter(categoryButton.dataset.category); $('#discover')?.scrollIntoView({ behavior: 'smooth' }); }
+      else if (viewButton) openProduct(viewButton.dataset.view);
+      else if (addButton) add(addButton.dataset.add);
+      else if (saveButton) { const id = saveButton.dataset.save; saved.has(id) ? saved.delete(id) : saved.add(id); render(); updateSavedCount(); }
+      else if (relatedButton) openProduct(relatedButton.dataset.related);
       return;
     }
-    const savedProducts = products.filter((p) => saved.has(p.id));
-    grid.innerHTML = savedProducts.length
-      ? savedProducts.map((p) => `<article class="product-card" data-id="${p.id}"><button class="save-product saved" data-save="${p.id}" aria-label="Remove from saved">♥</button><button class="product-card-main" data-product="${p.id}"><div class="product-image">${p.image ? `<img src="${p.image}" alt="${p.n}" loading="lazy">` : `<span>${p.mark}</span>`}</div><div class="product-card-copy"><small>${p.cat} · ${p.origin}</small><h3>${p.n}</h3><p>${p.seller}</p><strong>${money(p.p)}</strong></div></button></article>`).join('`)
-      : '<div class="store-empty-state"><p>Your saved products will appear here.</p></div>';
-    grid.querySelectorAll('[data-product]').forEach((button) => button.addEventListener('click', () => openProduct(button.dataset.product)));
-    grid.querySelectorAll('[data-save]').forEach((button) => button.addEventListener('click', (event) => { event.stopPropagation(); toggleWishlist(button.dataset.save); }));
-    document.querySelector('#discover')?.scrollIntoView({ behavior: 'smooth' });
+
+    if (event.target.closest('#wishlist-open')) {
+      event.stopPropagation();
+      savedView = true;
+      render();
+      $('#discover')?.scrollIntoView({ behavior: 'smooth' });
+      return;
+    }
+
+    if (event.target.closest('#modal-add') && selected) {
+      event.stopPropagation();
+      add(selected.id);
+      $('#product-modal')?.classList.remove('open');
+      document.body.classList.remove('modal-open');
+    }
+  }, true);
+
+  document.addEventListener('input', (event) => {
+    if (event.target.id === 'store-search' || event.target.id === 'top-search') {
+      event.stopPropagation();
+      syncSearch(event.target.value);
+    }
+  }, true);
+
+  document.addEventListener('change', (event) => {
+    if (event.target.id === 'sort-products') {
+      event.stopPropagation();
+      sort = event.target.value;
+      render();
+    }
+  }, true);
+
+  $('#clear-search')?.addEventListener('click', (event) => {
+    event.stopImmediatePropagation();
+    searchStarted = false;
+    syncSearch('');
   });
+
+  $('#modal-close')?.addEventListener('click', () => {
+    $('#product-modal')?.classList.remove('open');
+    document.body.classList.remove('modal-open');
+  });
+
+  $('#product-modal')?.addEventListener('click', (event) => {
+    if (event.target.id === 'product-modal') {
+      $('#product-modal').classList.remove('open');
+      document.body.classList.remove('modal-open');
+    }
+  });
+
+  grid.addEventListener('click', (event) => {
+    if (event.target.closest('[data-view],[data-add],[data-save]')) event.stopPropagation();
+  }, true);
 
   loadProducts();
 });
-
-// Load the dedicated reviews module after the Store API layer is ready.
-if (!document.querySelector('script[data-origyn-reviews]')) {
-  const reviewsScript = document.createElement('script');
-  reviewsScript.src = 'store-reviews.js';
-  reviewsScript.dataset.origynReviews = 'true';
-  document.body.appendChild(reviewsScript);
-}
