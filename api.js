@@ -15,45 +15,29 @@
 
   const TOKEN_KEY = 'origyn_access_token';
   const DEFAULT_TIMEOUT_MS = 15000;
+  let authRequiredMessage = '';
 
   function getToken() {
-    try {
-      return sessionStorage.getItem(TOKEN_KEY);
-    } catch (_error) {
-      return null;
-    }
+    try { return sessionStorage.getItem(TOKEN_KEY); } catch (_error) { return null; }
   }
 
   function setToken(token) {
     if (typeof token !== 'string' || !token.trim()) return false;
-    try {
-      sessionStorage.setItem(TOKEN_KEY, token);
-      return true;
-    } catch (_error) {
-      return false;
-    }
+    try { sessionStorage.setItem(TOKEN_KEY, token); return true; } catch (_error) { return false; }
   }
 
   function clearToken() {
-    try {
-      sessionStorage.removeItem(TOKEN_KEY);
-    } catch (_error) {
-      // Storage can be unavailable in privacy-restricted browser contexts.
-    }
+    try { sessionStorage.removeItem(TOKEN_KEY); } catch (_error) {}
   }
 
   function getBaseUrl() {
     const value = global.ORIGYN_API_BASE_URL;
-    if (typeof value !== 'string' || !value.trim()) {
-      throw new Error('Origyn API base URL is not configured');
-    }
+    if (typeof value !== 'string' || !value.trim()) throw new Error('Origyn API base URL is not configured');
     return value.replace(/\/+$/, '');
   }
 
   function buildUrl(path) {
-    if (typeof path !== 'string' || !path.startsWith('/')) {
-      throw new Error('API path must start with /');
-    }
+    if (typeof path !== 'string' || !path.startsWith('/')) throw new Error('API path must start with /');
     return `${getBaseUrl()}${path}`;
   }
 
@@ -61,19 +45,14 @@
     const method = String(options.method || 'GET').toUpperCase();
     const hasBody = options.body !== undefined && options.body !== null;
     const headers = new Headers(options.headers || {});
-
     headers.set('Accept', 'application/json');
-    if (hasBody && !(options.body instanceof FormData)) {
-      headers.set('Content-Type', 'application/json');
-    }
+    if (hasBody && !(options.body instanceof FormData)) headers.set('Content-Type', 'application/json');
 
     const token = getToken();
     if (token) headers.set('Authorization', `Bearer ${token}`);
 
     const controller = new AbortController();
-    const timeoutMs = Number.isFinite(options.timeoutMs) && options.timeoutMs > 0
-      ? options.timeoutMs
-      : DEFAULT_TIMEOUT_MS;
+    const timeoutMs = Number.isFinite(options.timeoutMs) && options.timeoutMs > 0 ? options.timeoutMs : DEFAULT_TIMEOUT_MS;
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     let response;
@@ -81,29 +60,19 @@
       response = await fetch(buildUrl(path), {
         method,
         headers,
-        body: hasBody && !(options.body instanceof FormData)
-          ? JSON.stringify(options.body)
-          : options.body,
+        body: hasBody && !(options.body instanceof FormData) ? JSON.stringify(options.body) : options.body,
         signal: options.signal || controller.signal,
         cache: options.cache || 'no-store'
       });
     } catch (error) {
-      if (error?.name === 'AbortError') {
-        throw new Error('Origyn API request timed out');
-      }
+      if (error?.name === 'AbortError') throw new Error('Origyn API request timed out');
       throw new Error('Unable to reach the Origyn API');
-    } finally {
-      clearTimeout(timeoutId);
-    }
+    } finally { clearTimeout(timeoutId); }
 
     let payload = null;
     const contentType = response.headers.get('content-type') || '';
     if (contentType.includes('application/json')) {
-      try {
-        payload = await response.json();
-      } catch (_error) {
-        payload = null;
-      }
+      try { payload = await response.json(); } catch (_error) { payload = null; }
     } else {
       const text = await response.text();
       payload = text ? { message: text } : null;
@@ -117,7 +86,6 @@
       error.data = payload;
       throw error;
     }
-
     return payload;
   }
 
@@ -127,34 +95,20 @@
     post: (path, body, options = {}) => request(path, { ...options, method: 'POST', body }),
     patch: (path, body, options = {}) => request(path, { ...options, method: 'PATCH', body }),
     delete: (path, options = {}) => request(path, { ...options, method: 'DELETE' }),
-
+    isAuthenticated: () => Boolean(getToken()),
+    setAuthRequiredMessage: (message) => { authRequiredMessage = typeof message === 'string' ? message : ''; },
+    getAuthRequiredMessage: () => authRequiredMessage,
+    setToken,
+    clearToken,
     auth: Object.freeze({
-      async register(payload) {
-        const result = await request('/auth/register', { method: 'POST', body: payload });
-        if (result?.token) setToken(result.token);
-        return result;
-      },
-      async login(payload) {
-        const result = await request('/auth/login', { method: 'POST', body: payload });
-        if (result?.token) setToken(result.token);
-        return result;
-      },
-      async logout() {
-        try {
-          return await request('/auth/logout', { method: 'POST' });
-        } finally {
-          clearToken();
-        }
-      },
+      async register(payload) { const result = await request('/auth/register', { method: 'POST', body: payload }); if (result?.token) setToken(result.token); return result; },
+      async login(payload) { const result = await request('/auth/login', { method: 'POST', body: payload }); if (result?.token) setToken(result.token); return result; },
+      async logout() { try { return await request('/auth/logout', { method: 'POST' }); } finally { clearToken(); } },
       me: () => request('/auth/me'),
       hasToken: () => Boolean(getToken()),
       clear: clearToken
     }),
-
-    session: Object.freeze({
-      isAuthenticated: () => Boolean(getToken()),
-      clear: clearToken
-    })
+    session: Object.freeze({ isAuthenticated: () => Boolean(getToken()), clear: clearToken })
   });
 
   global.OrigynAPI = api;
