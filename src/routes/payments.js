@@ -79,7 +79,7 @@ router.post('/orders/:orderId/initiate', authenticate, async (req, res, next) =>
       );
       if (Number(reservationResult.rows[0].expired_count) > 0) {
         await releaseOrderReservations(client, orderId, 'expired');
-        await client.query('ROLLBACK');
+        await client.query('COMMIT');
         return res.status(409).json({ error: 'Inventory reservation has expired; please create a new checkout' });
       }
 
@@ -290,7 +290,7 @@ router.post('/webhooks/:provider', async (req, res, next) => {
            WHERE id = $2`,
           [status, orderId, orderUpdate]
         );
-        if(orderUpdate) await releaseOrderReservations(client, orderId, status === 'cancelled' ? 'released' : 'released');
+        if(orderUpdate) await releaseOrderReservations(client, orderId, 'released');
       }
 
       await client.query('COMMIT');
