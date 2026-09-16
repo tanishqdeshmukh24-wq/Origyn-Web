@@ -83,7 +83,7 @@ test('seller onboarding creates a pending external seller profile and returns pr
     }),
   });
 
-  assert.equal(create.response.status, 201);
+  assert.equal(create.response.status, 201, JSON.stringify(create.body));
   assert.equal(create.body.seller.seller_type, 'external');
   assert.equal(create.body.seller.verification_status, 'pending');
   assert.equal(create.body.seller.active, true);
@@ -130,7 +130,7 @@ test('admin verification changes seller state and verified sellers cannot self-e
     method: 'POST',
     body: JSON.stringify({ legal_name: 'Verification Seller Pvt Ltd', display_name: 'Verification Seller', country_code: 'IN' }),
   });
-  assert.equal(create.response.status, 201);
+  assert.equal(create.response.status, 201, JSON.stringify(create.body));
   const sellerId = create.body.seller.id;
 
   const adminRegistration = await register('Seller Admin');
