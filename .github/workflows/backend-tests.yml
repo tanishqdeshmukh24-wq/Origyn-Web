@@ -57,6 +57,7 @@ jobs:
             psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/006_order_seller_snapshots.sql
             psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/007_commission_ledger.sql
             psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/008_payout_architecture.sql
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/009_refund_payout_reconciliation.sql
           done
 
       - name: Syntax check
