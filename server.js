@@ -13,6 +13,7 @@ const categoryRoutes = require('./src/routes/categories');
 const publisherRoutes = require('./src/routes/publishers');
 const meRoutes = require('./src/routes/me');
 const sellerRoutes = require('./src/routes/seller');
+const sellerPublicRoutes = require('./src/routes/seller-public');
 const cartRoutes = require('./src/routes/cart');
 const wishlistRoutes = require('./src/routes/wishlist');
 const reviewRoutes = require('./src/routes/reviews');
@@ -39,6 +40,7 @@ const webhookRateLimit = rateLimit({ windowMs: 60 * 1000, limit: 60, standardHea
 
 app.use('/api/auth', authRateLimit);
 app.use('/api/seller', sellerRateLimit);
+app.use('/api/seller-public', commerceRateLimit);
 app.use('/api/cart', commerceRateLimit);
 app.use('/api/wishlist', commerceRateLimit);
 app.use('/api/orders', commerceRateLimit);
@@ -57,6 +59,7 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/publishers', publisherRoutes);
 app.use('/api/me', meRoutes);
 app.use('/api/seller', sellerRoutes);
+app.use('/api/seller-public', sellerPublicRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api', commerceRateLimit, reviewRoutes);
