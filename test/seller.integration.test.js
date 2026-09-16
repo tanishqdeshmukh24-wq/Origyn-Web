@@ -62,7 +62,7 @@ test.after(async () => {
   if (db) await db.end();
 });
 
-test('seller onboarding creates a pending external seller profile and hides tax identifiers from public serialization', async () => {
+test('seller onboarding creates a pending external seller profile and returns private tax identifiers only on the owner endpoint', async () => {
   const registration = await register('Seller Onboarding');
   assert.equal(registration.response.status, 201);
   const token = registration.body.token;
