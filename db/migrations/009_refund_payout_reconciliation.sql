@@ -1,7 +1,8 @@
 -- Refund-aware seller earnings reconciliation.
 -- This migration does not move money. It records how successful customer
 -- refunds reduce seller earnings that are still payable, and creates a
--- recoverable seller balance when the affected earnings were already paid.
+-- recoverable seller balance only when the affected seller earnings were
+-- already paid.
 
 ALTER TABLE commission_ledger
     ADD COLUMN IF NOT EXISTS refunded_paise BIGINT NOT NULL DEFAULT 0 CHECK (refunded_paise >= 0);
@@ -23,10 +24,6 @@ CREATE INDEX IF NOT EXISTS idx_commission_refund_allocations_refund
 CREATE INDEX IF NOT EXISTS idx_commission_refund_allocations_ledger
     ON commission_refund_allocations(commission_ledger_id);
 
--- A successful refund can only reduce the seller's share of the refunded
--- order-item value. Refunds are allocated against seller earnings rather than
--- against Origyn's commission, because the seller payout is the amount that
--- must be reconciled when customer consideration is returned.
 CREATE OR REPLACE FUNCTION commerce_reconcile_successful_refund()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -35,15 +32,15 @@ DECLARE
     seller_share BIGINT;
     allocated BIGINT;
     allocation BIGINT;
-    paid_amount BIGINT;
+    inserted_rows INTEGER;
+    paid_before BIGINT;
+    paid_after BIGINT;
+    newly_recoverable BIGINT;
 BEGIN
     IF NEW.status <> 'succeeded' OR OLD.status = 'succeeded' THEN
         RETURN NEW;
     END IF;
 
-    -- Reconcile the refund across the order's seller earnings. The current
-    -- order model has one seller per order item, so each ledger row is handled
-    -- independently. Allocation is capped at that item's seller earnings.
     FOR ledger_row IN
         SELECT cl.id, cl.seller_payout_paise, cl.refunded_paise,
                COALESCE(SUM(sra.amount_paise), 0) AS allocated_refunds
@@ -65,20 +62,33 @@ BEGIN
 
         allocation := LEAST(remaining_refund, seller_share - allocated);
 
+        SELECT COALESCE(SUM(sra.amount_paise), 0)
+          INTO paid_before
+          FROM seller_payout_items sra
+          JOIN seller_payouts sp ON sp.id = sra.payout_id
+         WHERE sra.commission_ledger_id = ledger_row.id
+           AND sp.status = 'paid';
+
         INSERT INTO commission_refund_allocations(
             commission_ledger_id, refund_id, amount_paise
         ) VALUES (
             ledger_row.id, NEW.id, allocation
         ) ON CONFLICT (commission_ledger_id, refund_id) DO NOTHING;
 
-        GET DIAGNOSTICS paid_amount = ROW_COUNT;
-        IF paid_amount = 0 THEN
+        GET DIAGNOSTICS inserted_rows = ROW_COUNT;
+        IF inserted_rows = 0 THEN
             CONTINUE;
         END IF;
 
+        paid_after := LEAST(paid_before, seller_share);
+        newly_recoverable := GREATEST(
+            0,
+            LEAST(paid_after, ledger_row.refunded_paise + allocation) - ledger_row.refunded_paise
+        );
+
         UPDATE commission_ledger
            SET refunded_paise = refunded_paise + allocation,
-               recoverable_paise = recoverable_paise + allocation,
+               recoverable_paise = recoverable_paise + newly_recoverable,
                status = CASE
                    WHEN refunded_paise + allocation >= seller_payout_paise THEN 'refunded'
                    ELSE 'partially_refunded'
@@ -89,10 +99,10 @@ BEGIN
         remaining_refund := remaining_refund - allocation;
     END LOOP;
 
-    -- If a refund exceeds seller earnings, the excess belongs to other
-    -- transaction-side amounts (such as platform commission/tax) and must not
-    -- be silently charged to the seller. Tax/invoice treatment is handled by
-    -- the eventual financial reconciliation layer.
+    -- Any refund amount beyond seller earnings belongs to other transaction
+    -- components (for example platform commission/tax) and is intentionally
+    -- not silently charged to the seller. Its accounting treatment belongs in
+    -- the eventual tax/invoice reconciliation layer.
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -142,7 +152,3 @@ DROP TRIGGER IF EXISTS trg_validate_seller_payout_item ON seller_payout_items;
 CREATE TRIGGER trg_validate_seller_payout_item
 BEFORE INSERT ON seller_payout_items
 FOR EACH ROW EXECUTE FUNCTION commerce_validate_seller_payout_item_v2();
-
--- A paid payout is no longer available to offset the refund through the
--- payout allocation table. recoverable_paise records the seller balance that
--- must be recovered/offset by future payouts.
