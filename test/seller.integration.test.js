@@ -161,3 +161,88 @@ test('admin verification changes seller state and verified sellers cannot self-e
   assert.equal(rejected.body.seller.verification_status, 'rejected');
   assert.equal(rejected.body.seller.verified_at, null);
 });
+
+test('current seller agreement must be accepted before a seller can publish, and a new version requires re-acceptance', async () => {
+  const registration = await register('Agreement Seller');
+  assert.equal(registration.response.status, 201);
+  const token = registration.body.token;
+  const userId = registration.body.user.id;
+
+  await db.query("UPDATE users SET role='seller' WHERE id=$1", [userId]);
+  const seller = await db.query(
+    `INSERT INTO seller_profiles (user_id, seller_type, legal_name, display_name, country_code, verification_status, verified_at, active)
+     VALUES ($1,'external','Agreement Seller Pvt Ltd','Agreement Seller','IN','verified',NOW(),TRUE)
+     RETURNING id`,
+    [userId]
+  );
+  const sellerId = seller.rows[0].id;
+
+  const agreementV1 = await db.query(
+    `INSERT INTO seller_agreement_versions (agreement_key, version, title, content, active)
+     VALUES ('seller_marketplace_terms',$1,'Seller Terms v1','Approved test terms v1',TRUE)
+     RETURNING id`,
+    [`test-${crypto.randomUUID()}`]
+  );
+
+  const category = await db.query(
+    `INSERT INTO categories (name, slug) VALUES ($1,$2) RETURNING id`,
+    [`Agreement Category ${crypto.randomUUID()}`, `agreement-${crypto.randomUUID()}`]
+  );
+  const product = await db.query(
+    `INSERT INTO products (seller_id, category_id, name, slug, description, product_type, price_paise, currency, status)
+     VALUES ($1,$2,$3,$4,'A publish-gate test product','digital',1000,'INR','draft')
+     RETURNING id`,
+    [sellerId, category.rows[0].id, `Agreement Product ${crypto.randomUUID()}`, `agreement-product-${crypto.randomUUID()}`]
+  );
+  const productId = product.rows[0].id;
+
+  const blocked = await api(token, `/api/products/${productId}/publish`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+  assert.equal(blocked.response.status, 403);
+  assert.equal(blocked.body.code, 'SELLER_AGREEMENT_REQUIRED');
+
+  const accepted = await api(token, '/api/seller-agreements/accept', {
+    method: 'POST',
+    body: JSON.stringify({ agreement_version_id: agreementV1.rows[0].id }),
+  });
+  assert.equal(accepted.response.status, 201);
+  assert.equal(accepted.body.accepted, true);
+
+  await db.query(
+    `INSERT INTO product_delivery (product_id, method) VALUES ($1,'download')`,
+    [productId]
+  );
+  await db.query(
+    `INSERT INTO product_policies (product_id, seller_rights_confirmed) VALUES ($1,TRUE)`,
+    [productId]
+  );
+
+  const published = await api(token, `/api/products/${productId}/publish`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+  assert.equal(published.response.status, 200);
+  assert.equal(published.body.status, 'published');
+
+  await db.query(`UPDATE seller_agreement_versions SET active=false WHERE id=$1`, [agreementV1.rows[0].id]);
+  const agreementV2 = await db.query(
+    `INSERT INTO seller_agreement_versions (agreement_key, version, title, content, active)
+     VALUES ('seller_marketplace_terms',$1,'Seller Terms v2','Approved test terms v2',TRUE)
+     RETURNING id`,
+    [`test-${crypto.randomUUID()}`]
+  );
+
+  const status = await api(token, '/api/seller-agreements/status');
+  assert.equal(status.response.status, 200);
+  assert.equal(status.body.agreement.accepted, false);
+  assert.equal(status.body.agreement.id, agreementV2.rows[0].id);
+
+  const blockedAfterVersion = await api(token, `/api/products/${productId}/publish`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+  assert.equal(blockedAfterVersion.response.status, 403);
+  assert.equal(blockedAfterVersion.body.code, 'SELLER_AGREEMENT_REQUIRED');
+});
