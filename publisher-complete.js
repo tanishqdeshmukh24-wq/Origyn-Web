@@ -130,7 +130,85 @@ document.addEventListener("DOMContentLoaded", () => {
     $("#draft-status").textContent = "Draft restored";
     refreshConditionalFields();
   }
-  $("#save-draft").addEventListener("click", () => { localStorage.setItem("origynPublisherDraft", JSON.stringify(draftData())); $("#draft-status").textContent = "Saved just now"; });
+  $("#save-draft").addEventListener("click", async () => {
+  const token = localStorage.getItem("origynAccessToken");
+
+  if (!token) {
+    $("#draft-status").textContent = "Please log in first";
+    return;
+  }
+
+  const body = {
+    name: $("#product-name").value.trim(),
+    description: $("#product-description").value.trim(),
+    product_type: $("#product-type").value,
+    category_slug: $("#product-category").value,
+    price: Number($("#product-price").value),
+    currency: "INR",
+    images: [],
+    options: [],
+    variants: variants,
+    inventory: {
+      stock_mode: $("#stock-mode").value,
+      stock_quantity: $("#stock-quantity").value
+        ? Number($("#stock-quantity").value)
+        : null
+    },
+    delivery: {
+      method: $("#delivery-method").value,
+      fulfilment_note: $("#delivery-note").value.trim()
+    },
+    shipping: {
+      ships_from: $("#ships-from").value.trim(),
+      processing_time: $("#processing-time").value
+    },
+    policies: {
+      refund_policy: $("#refund-policy").value,
+      seller_rights_confirmed: $("#terms-confirm").checked
+    }
+  };
+
+  $("#draft-status").textContent = "Saving...";
+
+  try {
+    const response = await fetch("http://localhost:5000/api/products", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+      },
+      body: JSON.stringify(body)
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("Save draft error:", data);
+      $("#draft-status").textContent =
+        data.error || "Failed to save draft";
+      return;
+    }
+
+    console.log("Draft created:", data);
+
+    localStorage.setItem(
+      "origynPublisherDraft",
+      JSON.stringify(draftData())
+    );
+
+    localStorage.setItem(
+      "origynCurrentProduct",
+      JSON.stringify(data)
+    );
+
+    $("#draft-status").textContent = "Saved to Origyn ✓";
+
+  } catch (error) {
+    console.error("Save draft error:", error);
+    $("#draft-status").textContent =
+      "Cannot connect to Origyn backend";
+  }
+});
 
   form.addEventListener("submit", e => {
     if (!$("#terms-confirm").checked) {
@@ -141,17 +219,238 @@ document.addEventListener("DOMContentLoaded", () => {
   }, true);
 
   const publishButton = $("#publish-listing-btn");
-  publishButton?.addEventListener("click", () => {
-    if (!$("#terms-confirm").checked) {
-      $("#form-message").textContent = "Confirm your seller rights before preparing this listing.";
-      $("#terms-confirm").focus();
+
+ publishButton?.addEventListener("click", async () => {
+  const token = localStorage.getItem("origynAccessToken");
+  const product = JSON.parse(
+    localStorage.getItem("origynCurrentProduct") || "null"
+  );
+
+  if (!token) {
+    $("#publish-status").textContent = "Please log in first.";
+    return;
+  }
+
+  if (!product?.id) {
+    $("#publish-status").textContent =
+      "Please save your draft before publishing.";
+    return;
+  }
+
+  if (!$("#terms-confirm").checked) {
+    $("#form-message").textContent =
+      "Confirm your seller rights before publishing.";
+    $("#terms-confirm").focus();
+    return;
+  }
+
+  const status = $("#publish-status");
+  status.textContent = "Publishing...";
+
+  try {
+    const response = await fetch(
+      `http://localhost:5000/api/products/${product.id}/publish`,
+      {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer " + token
+        }
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("Publish error:", data);
+
+      const details = Array.isArray(data.details)
+        ? data.details.join(" • ")
+        : "";
+
+      status.textContent =
+        data.error + (details ? `: ${details}` : "");
+
       return;
     }
-    const status = $("#publish-status");
-    if (status) status.textContent = "Listing is complete and ready for API submission. Images, variants, inventory, delivery, shipping and seller policy are prepared.";
-    status?.classList.add("visible");
-  }, true);
 
+    console.log("Published product:", data);
+
+    localStorage.setItem(
+      "origynCurrentProduct",
+      JSON.stringify(data)
+    );
+
+    status.textContent = "Published on Origyn ✓";
+    status.classList.add("visible");
+
+  } catch (error) {
+    console.error("Publish error:", error);
+    status.textContent =
+      "Cannot connect to Origyn backend.";
+  }
+}, true);
+  // =========================
+  // MY PRODUCTS
+  // =========================
+
+  async function loadMyProducts() {
+    const list = document.querySelector("#my-products-list");
+    const token = localStorage.getItem("origynAccessToken");
+    const user = JSON.parse(localStorage.getItem("origynUser") || "null");
+
+    if (!list) return;
+
+    if (!token || !user) {
+      list.innerHTML = "<p>Please log in to see your products.</p>";
+      return;
+    }
+
+    list.innerHTML = "<p>Loading your products...</p>";
+
+    try {
+      const response = await fetch(
+        "http://localhost:5000/api/products?limit=100",
+        {
+          headers: {
+            "Authorization": "Bearer " + token
+          }
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        list.innerHTML = `<p>${result.error || "Failed to load products."}</p>`;
+        return;
+      }
+
+      // Show only products belonging to this publisher
+      const products = (result.data || []).filter(product =>
+        product.publisher_id === user.publisher_id
+      );
+
+      if (!products.length) {
+        list.innerHTML = "<p>You haven't published any products yet.</p>";
+        return;
+      }
+
+      list.innerHTML = products.map(product => `
+        <div class="my-product-card">
+          <div>
+            <h3>${product.name}</h3>
+            <p>₹${(Number(product.price_paise || 0) / 100).toLocaleString("en-IN")}</p>
+            <span>${product.status || "published"}</span>
+          </div>
+
+          <div class="my-product-actions">
+            ${
+              product.status === "published"
+                ? `<button type="button" data-archive-product="${product.id}">
+                    Archive
+                   </button>`
+                : `<button type="button" data-delete-product="${product.id}">
+                    Delete
+                   </button>`
+            }
+          </div>
+        </div>
+      `).join("");
+
+    } catch (error) {
+      console.error("My products error:", error);
+      list.innerHTML = "<p>Cannot connect to Origyn backend.</p>";
+    }
+  }
+
+
+  // Archive a published product
+  document.addEventListener("click", async (event) => {
+    const archiveButton = event.target.closest("[data-archive-product]");
+    if (!archiveButton) return;
+
+    const productId = archiveButton.dataset.archiveProduct;
+    const token = localStorage.getItem("origynAccessToken");
+
+    if (!confirm("Archive this product from the store?")) return;
+
+    archiveButton.disabled = true;
+    archiveButton.textContent = "Archiving...";
+
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/products/${productId}/archive`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer " + token
+          }
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.error || "Failed to archive product.");
+        archiveButton.disabled = false;
+        archiveButton.textContent = "Archive";
+        return;
+      }
+
+      await loadMyProducts();
+
+    } catch (error) {
+      console.error("Archive error:", error);
+      alert("Cannot connect to Origyn backend.");
+      archiveButton.disabled = false;
+      archiveButton.textContent = "Archive";
+    }
+  });
+
+
+  // Delete a draft / non-published product
+  document.addEventListener("click", async (event) => {
+    const deleteButton = event.target.closest("[data-delete-product]");
+    if (!deleteButton) return;
+
+    const productId = deleteButton.dataset.deleteProduct;
+    const token = localStorage.getItem("origynAccessToken");
+
+    if (!confirm("Permanently delete this product?")) return;
+
+    deleteButton.disabled = true;
+    deleteButton.textContent = "Deleting...";
+
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/products/${productId}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Authorization": "Bearer " + token
+          }
+        }
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        alert(data.error || "Failed to delete product.");
+        deleteButton.disabled = false;
+        deleteButton.textContent = "Delete";
+        return;
+      }
+
+      await loadMyProducts();
+
+    } catch (error) {
+      console.error("Delete error:", error);
+      alert("Cannot connect to Origyn backend.");
+      deleteButton.disabled = false;
+      deleteButton.textContent = "Delete";
+    }
+  });
+
+
+  loadMyProducts();
   restoreDraft();
   refreshConditionalFields();
 });
