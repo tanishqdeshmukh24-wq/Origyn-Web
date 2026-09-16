@@ -2,7 +2,7 @@
 -- One ledger row is created per order item at checkout, preserving the
 -- commission policy and monetary calculation used for that transaction.
 -- Status moves from pending to earned only after successful payment capture.
--- Cancelled rows remain as history and are never deleted.
+-- Historical rows are retained; no financial record is deleted.
 
 CREATE TABLE IF NOT EXISTS commission_ledger (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -38,3 +38,71 @@ DROP TRIGGER IF EXISTS trg_commission_ledger_updated_at ON commission_ledger;
 CREATE TRIGGER trg_commission_ledger_updated_at
 BEFORE UPDATE ON commission_ledger
 FOR EACH ROW EXECUTE FUNCTION commerce_commission_ledger_updated_at();
+
+-- Create the ledger entry from the authoritative order-item calculation.
+-- ON CONFLICT makes this safe for migration reruns and protects against
+-- duplicate financial records if the application retries an insert.
+CREATE OR REPLACE FUNCTION commerce_create_commission_ledger()
+RETURNS TRIGGER AS $$
+DECLARE
+    order_currency CHAR(3);
+BEGIN
+    SELECT currency INTO order_currency FROM orders WHERE id = NEW.order_id;
+    IF order_currency IS NULL THEN
+        RAISE EXCEPTION 'Order % does not have a currency', NEW.order_id USING ERRCODE = '23503';
+    END IF;
+
+    INSERT INTO commission_ledger(
+        order_id, order_item_id, seller_id, currency,
+        gross_paise, commission_rate_percent, commission_paise, seller_payout_paise
+    ) VALUES (
+        NEW.order_id, NEW.id, NEW.seller_id, order_currency,
+        NEW.unit_price_paise * NEW.quantity,
+        NEW.commission_rate_percent, NEW.commission_paise, NEW.seller_payout_paise
+    ) ON CONFLICT (order_item_id) DO NOTHING;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_order_items_commission_ledger ON order_items;
+CREATE TRIGGER trg_order_items_commission_ledger
+AFTER INSERT ON order_items
+FOR EACH ROW EXECUTE FUNCTION commerce_create_commission_ledger();
+
+-- Payment capture is the point at which the commission becomes earned.
+CREATE OR REPLACE FUNCTION commerce_mark_commission_earned()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.status = 'captured' AND OLD.status IS DISTINCT FROM 'captured' THEN
+        UPDATE commission_ledger
+        SET status='earned', earned_at=COALESCE(earned_at,NOW()), updated_at=NOW()
+        WHERE order_id=NEW.order_id AND status='pending';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_payment_commission_earned ON payments;
+CREATE TRIGGER trg_payment_commission_earned
+AFTER UPDATE OF status ON payments
+FOR EACH ROW EXECUTE FUNCTION commerce_mark_commission_earned();
+
+-- Backfill historical order items once, preserving the original stored
+-- commission calculation rather than recomputing policy rates.
+INSERT INTO commission_ledger(
+    order_id, order_item_id, seller_id, currency,
+    gross_paise, commission_rate_percent, commission_paise, seller_payout_paise,
+    status, earned_at
+)
+SELECT
+    oi.order_id, oi.id, oi.seller_id, o.currency,
+    oi.unit_price_paise * oi.quantity,
+    oi.commission_rate_percent, oi.commission_paise, oi.seller_payout_paise,
+    CASE WHEN o.payment_status='paid' THEN 'earned' ELSE 'pending' END,
+    CASE WHEN o.payment_status='paid' THEN COALESCE(o.updated_at, NOW()) ELSE NULL END
+FROM order_items oi
+JOIN orders o ON o.id=oi.order_id
+LEFT JOIN commission_ledger cl ON cl.order_item_id=oi.id
+WHERE cl.id IS NULL
+ON CONFLICT (order_item_id) DO NOTHING;
