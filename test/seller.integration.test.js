@@ -177,6 +177,7 @@ test('current seller agreement must be accepted before a seller can publish, and
   );
   const sellerId = seller.rows[0].id;
 
+  await db.query(`UPDATE seller_agreement_versions SET active=false WHERE agreement_key='seller_marketplace_terms' AND active=true`);
   const agreementV1 = await db.query(
     `INSERT INTO seller_agreement_versions (agreement_key, version, title, content, active)
      VALUES ('seller_marketplace_terms',$1,'Seller Terms v1','Approved test terms v1',TRUE)
