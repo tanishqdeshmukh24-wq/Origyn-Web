@@ -5,6 +5,7 @@ const { validateProductInput } = require('../utils/product');
 const { PRODUCT_SELECT, getProduct, createProduct, updateProduct, setStatus } = require('../services/productService');
 
 const router = express.Router();
+const AGREEMENT_KEY = 'seller_marketplace_terms';
 
 router.get('/', async (req, res, next) => {
   try {
@@ -63,6 +64,24 @@ router.post('/:id/publish', authenticate, requireRole('publisher', 'seller', 'ad
     if (!seller.rowCount) return res.status(403).json({ error: 'Seller profile required before publishing products' });
     if (seller.rows[0].verification_status !== 'verified' || !seller.rows[0].active) {
       return res.status(403).json({ error: 'Seller verification is required before publishing products' });
+    }
+
+    const agreement = await pool.query(
+      `SELECT v.id, v.version
+       FROM seller_agreement_versions v
+       JOIN seller_agreement_acceptances a
+         ON a.agreement_version_id=v.id
+        AND a.seller_profile_id=$1
+       WHERE v.agreement_key=$2 AND v.active=true
+       LIMIT 1`,
+      [seller.rows[0].id, AGREEMENT_KEY]
+    );
+    if (!agreement.rowCount) {
+      return res.status(403).json({
+        error: 'Current seller agreement must be accepted before publishing products',
+        code: 'SELLER_AGREEMENT_REQUIRED',
+        agreement_key: AGREEMENT_KEY,
+      });
     }
 
     const product = await getProduct(req.params.id, { includeUnpublished: true, publisherId: req.user.publisher_id, admin: req.user.role === 'admin' });
