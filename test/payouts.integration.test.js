@@ -38,7 +38,6 @@ test('payout allocation excludes refunded seller earnings and records recoverabl
   ids.orderId = crypto.randomUUID();
   ids.productId = crypto.randomUUID();
   ids.orderItemId = crypto.randomUUID();
-  ids.ledgerId = crypto.randomUUID();
   ids.paymentId = crypto.randomUUID();
   ids.refundId = crypto.randomUUID();
   ids.payoutId = crypto.randomUUID();
@@ -69,10 +68,19 @@ test('payout allocation excludes refunded seller earnings and records recoverabl
   );
 
   await db.query(
-    `INSERT INTO commission_ledger(id,order_id,order_item_id,seller_id,currency,gross_paise,commission_rate_percent,commission_paise,seller_payout_paise,status,earned_at)
-     VALUES($1,$2,$3,$4,'INR',25000,10,2500,22500,'earned',NOW())`,
-    [ids.ledgerId, ids.orderId, ids.orderItemId, ids.sellerUserId]
+    `INSERT INTO payments(id,order_id,user_id,provider,amount_paise,currency,status)
+     VALUES($1,$2,$3,'payout-test',25000,'INR','captured')`,
+    [ids.paymentId, ids.orderId, ids.sellerUserId]
   );
+
+  const ledgerResult = await db.query(
+    `SELECT id,status FROM commission_ledger WHERE order_item_id=$1`,
+    [ids.orderItemId]
+  );
+  assert.equal(ledgerResult.rowCount, 1);
+  assert.equal(ledgerResult.rows[0].status, 'earned');
+  ids.ledgerId = ledgerResult.rows[0].id;
+
   await db.query(
     `INSERT INTO seller_payouts(id,seller_id,currency,amount_paise,status,requested_at)
      VALUES($1,$2,'INR',22500,'paid',NOW())`,
@@ -87,11 +95,6 @@ test('payout allocation excludes refunded seller earnings and records recoverabl
     [ids.payoutId, ids.ledgerId]
   );
 
-  await db.query(
-    `INSERT INTO payments(id,order_id,user_id,provider,amount_paise,currency,status)
-     VALUES($1,$2,$3,'payout-test',25000,'INR','captured')`,
-    [ids.paymentId, ids.orderId, ids.sellerUserId]
-  );
   await db.query(
     `INSERT INTO refunds(id,payment_id,order_id,amount_paise,status)
      VALUES($1,$2,$3,10000,'pending')`,
