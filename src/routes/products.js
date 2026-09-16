@@ -55,6 +55,16 @@ router.patch('/:id', authenticate, requireRole('publisher', 'seller', 'admin'), 
 
 router.post('/:id/publish', authenticate, requireRole('publisher', 'seller', 'admin'), async (req, res, next) => {
   try {
+    const seller = await pool.query(
+      `SELECT id, seller_type, verification_status, active
+       FROM seller_profiles WHERE user_id=$1 LIMIT 1`,
+      [req.user.id]
+    );
+    if (!seller.rowCount) return res.status(403).json({ error: 'Seller profile required before publishing products' });
+    if (seller.rows[0].verification_status !== 'verified' || !seller.rows[0].active) {
+      return res.status(403).json({ error: 'Seller verification is required before publishing products' });
+    }
+
     const product = await getProduct(req.params.id, { includeUnpublished: true, publisherId: req.user.publisher_id, admin: req.user.role === 'admin' });
     if (!product) return res.status(404).json({ error: 'Product not found' });
     const body = {
