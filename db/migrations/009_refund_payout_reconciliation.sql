@@ -34,7 +34,6 @@ DECLARE
     allocation BIGINT;
     inserted_rows INTEGER;
     paid_before BIGINT;
-    paid_after BIGINT;
     newly_recoverable BIGINT;
 BEGIN
     IF NEW.status <> 'succeeded' OR OLD.status = 'succeeded' THEN
@@ -62,6 +61,9 @@ BEGIN
 
         allocation := LEAST(remaining_refund, seller_share - allocated);
 
+        -- Only money already paid to the seller becomes a recoverable seller
+        -- balance. If the payout has not been paid, the refund simply reduces
+        -- the amount that may be paid later.
         SELECT COALESCE(SUM(sra.amount_paise), 0)
           INTO paid_before
           FROM seller_payout_items sra
@@ -80,11 +82,7 @@ BEGIN
             CONTINUE;
         END IF;
 
-        paid_after := LEAST(paid_before, seller_share);
-        newly_recoverable := GREATEST(
-            0,
-            LEAST(paid_after, ledger_row.refunded_paise + allocation) - ledger_row.refunded_paise
-        );
+        newly_recoverable := LEAST(allocation, GREATEST(paid_before - ledger_row.refunded_paise, 0));
 
         UPDATE commission_ledger
            SET refunded_paise = refunded_paise + allocation,
