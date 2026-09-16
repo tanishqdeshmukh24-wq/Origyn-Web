@@ -12,6 +12,7 @@ const productRoutes = require('./src/routes/products');
 const categoryRoutes = require('./src/routes/categories');
 const publisherRoutes = require('./src/routes/publishers');
 const meRoutes = require('./src/routes/me');
+const sellerRoutes = require('./src/routes/seller');
 const cartRoutes = require('./src/routes/cart');
 const wishlistRoutes = require('./src/routes/wishlist');
 const reviewRoutes = require('./src/routes/reviews');
@@ -33,9 +34,11 @@ app.use(express.json({ limit: '1mb' }));
 
 const authRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, limit: 100, standardHeaders: 'draft-8', legacyHeaders: false });
 const commerceRateLimit = rateLimit({ windowMs: 60 * 1000, limit: 120, standardHeaders: 'draft-8', legacyHeaders: false });
+const sellerRateLimit = rateLimit({ windowMs: 60 * 1000, limit: 30, standardHeaders: 'draft-8', legacyHeaders: false });
 const webhookRateLimit = rateLimit({ windowMs: 60 * 1000, limit: 60, standardHeaders: 'draft-8', legacyHeaders: false });
 
 app.use('/api/auth', authRateLimit);
+app.use('/api/seller', sellerRateLimit);
 app.use('/api/cart', commerceRateLimit);
 app.use('/api/wishlist', commerceRateLimit);
 app.use('/api/orders', commerceRateLimit);
@@ -53,6 +56,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/publishers', publisherRoutes);
 app.use('/api/me', meRoutes);
+app.use('/api/seller', sellerRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api', commerceRateLimit, reviewRoutes);
