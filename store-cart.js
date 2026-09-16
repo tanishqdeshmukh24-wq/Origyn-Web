@@ -1,7 +1,4 @@
 /* Origyn Store persistent cart integration. Loaded after the Store UI scripts. */
-if (!document.querySelector('script[data-origyn-reviews]')) {
-  document.write('<script src="store-reviews.js" data-origyn-reviews="true"><\/script>');
-}
 document.addEventListener('DOMContentLoaded', () => {
   'use strict';
   const api = window.OrigynAPI;
@@ -15,6 +12,9 @@ document.addEventListener('DOMContentLoaded', () => {
   let cart = { items: [], total_paise: 0, currency: 'INR' };
   let selectedProductId = null;
 
+  const escapeHtml = (value) => String(value ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
   const money = (paise, currency = 'INR') => {
     try { return new Intl.NumberFormat('en-IN', { style: 'currency', currency }).format(Number(paise || 0) / 100); }
     catch (_error) { return `${currency} ${(Number(paise || 0) / 100).toLocaleString('en-IN')}`; }
@@ -32,20 +32,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const items = Array.isArray(cart.items) ? cart.items : [];
     cartCount.textContent = String(items.reduce((sum, item) => sum + Number(item.quantity || 0), 0));
     cartTotal.textContent = money(cart.total_paise, cart.currency || 'INR');
-    cartItems.innerHTML = items.length ? items.map((item) => `
-      <div class="cart-item" data-cart-id="${item.id}">
-        <div class="cart-item-image">${productImage(item) ? `<img src="${productImage(item)}" alt="${productName(item)}">` : '<span>O</span>'}</div>
+    cartItems.innerHTML = items.length ? items.map((item) => {
+      const name = escapeHtml(productName(item));
+      const image = productImage(item);
+      return `<div class="cart-item" data-cart-id="${escapeHtml(item.id)}">
+        <div class="cart-item-image">${image ? `<img src="${escapeHtml(image)}" alt="${name}">` : '<span>O</span>'}</div>
         <div class="cart-item-info">
-          <strong>${productName(item)}</strong>
+          <strong>${name}</strong>
           <small>${money(item.unit_price_paise, item.product_snapshot?.currency || cart.currency || 'INR')}</small>
           <div class="cart-item-controls">
-            <button type="button" data-cart-minus="${item.id}" aria-label="Decrease quantity">−</button>
-            <span>${item.quantity}</span>
-            <button type="button" data-cart-plus="${item.id}" aria-label="Increase quantity">+</button>
-            <button type="button" data-cart-remove="${item.id}" aria-label="Remove product">Remove</button>
+            <button type="button" data-cart-minus="${escapeHtml(item.id)}" aria-label="Decrease quantity">−</button>
+            <span>${Number(item.quantity) || 0}</span>
+            <button type="button" data-cart-plus="${escapeHtml(item.id)}" aria-label="Increase quantity">+</button>
+            <button type="button" data-cart-remove="${escapeHtml(item.id)}" aria-label="Remove product">Remove</button>
           </div>
         </div>
-      </div>`).join('') : '<div class="store-empty-state"><p>Your cart is empty.</p></div>';
+      </div>`;
+    }).join('') : '<div class="store-empty-state"><p>Your cart is empty.</p></div>';
   };
 
   const loadCart = async () => {
@@ -64,8 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!name) return null;
     const response = await api.get(`/api/products?q=${encodeURIComponent(name)}&limit=10`);
     const matches = Array.isArray(response?.data) ? response.data : [];
-    const exact = matches.find((product) => product.name === name);
-    return exact || matches[0] || null;
+    return matches.find((product) => product.name === name) || matches[0] || null;
   };
 
   const addToCart = async () => {
@@ -79,9 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
       cart = await api.post('/api/cart/items', { product_id: product.id, variant_id: variantId, quantity: 1 });
       render();
       openCart();
-    } catch (error) {
-      alert(error.message || 'Could not add this product to your cart.');
-    }
+    } catch (error) { alert(error.message || 'Could not add this product to your cart.'); }
   };
 
   const updateQuantity = async (itemId, quantity) => {
@@ -104,21 +104,14 @@ document.addEventListener('DOMContentLoaded', () => {
     else if (item) updateQuantity(id, Math.max(1, Number(item.quantity) + (plus ? 1 : -1)));
   });
 
-  if (modalAdd) {
-    modalAdd.addEventListener('click', (event) => {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      addToCart();
-    }, true);
-  }
+  if (modalAdd) modalAdd.addEventListener('click', (event) => {
+    event.preventDefault(); event.stopImmediatePropagation(); addToCart();
+  }, true);
 
   const modal = document.querySelector('#product-modal');
   if (modal) {
-    const observer = new MutationObserver(() => {
-      if (!modal.classList.contains('open')) selectedProductId = null;
-    });
+    const observer = new MutationObserver(() => { if (!modal.classList.contains('open')) selectedProductId = null; });
     observer.observe(modal, { attributes: true, attributeFilter: ['class'] });
   }
-
   loadCart();
 });
