@@ -13,11 +13,11 @@ async function cleanup() {
   await db.query('DELETE FROM commission_refund_allocations WHERE commission_ledger_id=$1', [ids.ledgerId]).catch(() => {});
   await db.query('DELETE FROM refunds WHERE id=$1', [ids.refundId]).catch(() => {});
   await db.query('DELETE FROM payments WHERE id=$1', [ids.paymentId]).catch(() => {});
-  await db.query('DELETE FROM commission_ledger WHERE id=$1', [ids.ledgerId]).catch(() => {});
   await db.query('DELETE FROM order_items WHERE id=$1', [ids.orderItemId]).catch(() => {});
+  await db.query('DELETE FROM commission_ledger WHERE id=$1', [ids.ledgerId]).catch(() => {});
   await db.query('DELETE FROM orders WHERE id=$1', [ids.orderId]).catch(() => {});
-  await db.query('DELETE FROM seller_profiles WHERE id=$1', [ids.sellerProfileId]).catch(() => {});
   await db.query('DELETE FROM products WHERE id=$1', [ids.productId]).catch(() => {});
+  await db.query('DELETE FROM seller_profiles WHERE id=$1', [ids.sellerProfileId]).catch(() => {});
   await db.query('DELETE FROM users WHERE id=$1', [ids.sellerUserId]).catch(() => {});
 }
 
@@ -69,9 +69,10 @@ test('payout allocation excludes refunded seller earnings and records recoverabl
 
   await db.query(
     `INSERT INTO payments(id,order_id,user_id,provider,amount_paise,currency,status)
-     VALUES($1,$2,$3,'payout-test',25000,'INR','captured')`,
+     VALUES($1,$2,$3,'payout-test',25000,'INR','pending')`,
     [ids.paymentId, ids.orderId, ids.sellerUserId]
   );
+  await db.query(`UPDATE payments SET status='captured' WHERE id=$1`, [ids.paymentId]);
 
   const ledgerResult = await db.query(
     `SELECT id,status FROM commission_ledger WHERE order_item_id=$1`,
