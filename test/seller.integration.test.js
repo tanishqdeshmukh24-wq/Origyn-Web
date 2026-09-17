@@ -194,7 +194,7 @@ test('current seller agreement must be accepted before a seller can publish, and
     `INSERT INTO products (seller_id, category_id, name, slug, description, product_type, price_paise, currency, status)
      VALUES ($1,$2,$3,$4,'A publish-gate test product','digital',1000,'INR','draft')
      RETURNING id`,
-    [sellerId, category.rows[0].id, `Agreement Product ${crypto.randomUUID()}`, `agreement-product-${crypto.randomUUID()}`]
+    [userId, category.rows[0].id, `Agreement Product ${crypto.randomUUID()}`, `agreement-product-${crypto.randomUUID()}`]
   );
   const productId = product.rows[0].id;
 
