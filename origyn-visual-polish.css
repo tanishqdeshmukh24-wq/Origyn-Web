@@ -21,7 +21,6 @@ body.auth-page {
   text-rendering: optimizeLegibility;
 }
 
-/* Shared editorial typography */
 body.store-page h1,
 body.store-page h2,
 body.publisher-page h1,
@@ -56,9 +55,7 @@ textarea:focus-visible {
   outline-offset: 3px;
 }
 
-/* =========================================================
-   PUBLISHER — follows the supplied landing-page reference
-   ========================================================= */
+/* Publisher */
 body.publisher-page header {
   background: var(--origyn-paper);
   border-bottom: 1px solid var(--origyn-line);
@@ -84,7 +81,6 @@ body.publisher-page .nav-links .auth-link:hover {
   border: 0;
   background: transparent;
 }
-
 body.publisher-page #home {
   background: var(--origyn-paper);
   color: var(--origyn-ink);
@@ -112,9 +108,7 @@ body.publisher-page #home .hero-primary {
   border-radius: 999px;
   color: #fff;
 }
-body.publisher-page #home .hero-primary:hover {
-  background: var(--origyn-blue-dark);
-}
+body.publisher-page #home .hero-primary:hover { background: var(--origyn-blue-dark); }
 body.publisher-page #home .hero-secondary {
   border-color: var(--origyn-ink);
   color: var(--origyn-ink);
@@ -124,7 +118,6 @@ body.publisher-page #home .hero-secondary:hover {
   background: var(--origyn-ink);
   color: #fff;
 }
-
 body.publisher-page #story,
 body.publisher-page #about { background: var(--origyn-paper); }
 body.publisher-page #sell,
@@ -143,8 +136,7 @@ body.publisher-page .listing-preview-panel {
 body.publisher-page .form-group input,
 body.publisher-page .form-group select,
 body.publisher-page .form-group textarea {
-  border: 1px solid #CFC DC7;
-  border-color: #CFCDC7;
+  border: 1px solid #CFCDC7;
   border-radius: 0;
   background: #fff;
   box-shadow: none;
@@ -155,9 +147,7 @@ body.publisher-page .form-group textarea:focus {
   border-color: var(--origyn-ink);
   box-shadow: none;
 }
-body.publisher-page .panel-status {
-  border-radius: 999px;
-}
+body.publisher-page .panel-status { border-radius: 999px; }
 body.publisher-page .my-product-card,
 body.publisher-page .product-row {
   border: 1px solid var(--origyn-line);
@@ -166,9 +156,7 @@ body.publisher-page .product-row {
   box-shadow: none;
 }
 
-/* =========================================================
-   STORE — same editorial system, while retaining live API data
-   ========================================================= */
+/* Store */
 .store-page .store-header {
   background: var(--origyn-paper);
   border-bottom: 1px solid var(--origyn-line);
@@ -201,7 +189,6 @@ body.publisher-page .product-row {
   border-color: var(--origyn-ink);
   box-shadow: none;
 }
-
 .store-page .store-hero {
   background: var(--origyn-ink);
   color: #fff;
@@ -228,10 +215,7 @@ body.publisher-page .product-row {
   border-radius: 999px;
 }
 .store-page .primary-btn:hover { background: var(--origyn-blue-dark); }
-.store-page .outline-btn {
-  border-radius: 999px;
-}
-
+.store-page .outline-btn { border-radius: 999px; }
 .store-page .discover-section,
 .store-page .category-section,
 .store-page .trust-section {
@@ -294,14 +278,10 @@ body.publisher-page .product-row {
 }
 .store-page .modal-close,
 .store-page #cart-close,
-.store-page .cart-head button {
-  border-radius: 50%;
-}
+.store-page .cart-head button { border-radius: 50%; }
 .store-page .cart-item { border-bottom-color: var(--origyn-line); }
 
-/* =========================================================
-   AUTH — centered split card exactly in the supplied reference
-   ========================================================= */
+/* Auth */
 body.auth-page {
   background: var(--origyn-paper);
   color: var(--origyn-ink);
@@ -363,13 +343,11 @@ body.auth-page .divider { background: var(--origyn-line); }
 @media (max-width: 900px) {
   body.publisher-page #home { padding-left: 6vw; padding-right: 6vw; }
 }
-
 @media (max-width: 750px) {
   body.auth-page .auth-wrapper { padding: 28px 16px; }
   body.auth-page .auth-intro { padding: 48px 30px; }
   body.auth-page .auth-form { padding: 36px 30px; }
 }
-
 @media (max-width: 700px) {
   body.publisher-page .nav-links { gap: 14px; }
   body.publisher-page .nav-links a:not(.auth-link):not(.store-link) { display: none; }
@@ -377,7 +355,6 @@ body.auth-page .divider { background: var(--origyn-line); }
   body.publisher-page #home h1 { font-size: clamp(52px, 15vw, 78px); letter-spacing: -.045em; }
   body.publisher-page .listing-workspace { grid-template-columns: 1fr; }
 }
-
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     scroll-behavior: auto !important;
