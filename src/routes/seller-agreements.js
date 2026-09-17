@@ -23,6 +23,7 @@ router.get('/current', async (_req, res, next) => {
       `SELECT id, agreement_key, version, title, content, effective_at, created_at
        FROM seller_agreement_versions
        WHERE agreement_key=$1 AND active=true
+       ORDER BY effective_at DESC, created_at DESC
        LIMIT 1`,
       [AGREEMENT_KEY]
     );
@@ -33,19 +34,45 @@ router.get('/current', async (_req, res, next) => {
 
 router.get('/status', authenticate, async (req, res, next) => {
   try {
-    const result = await pool.query(
-      `SELECT v.id, v.version, v.title, v.effective_at,
-              (a.id IS NOT NULL) AS accepted
-       FROM seller_agreement_versions v
-       LEFT JOIN seller_agreement_acceptances a
-         ON a.agreement_version_id=v.id
-        AND a.seller_profile_id=(SELECT id FROM seller_profiles WHERE user_id=$1)
-       WHERE v.agreement_key=$2 AND v.active=true
+    const agreement = await pool.query(
+      `SELECT id, agreement_key, version, title, effective_at, created_at
+       FROM seller_agreement_versions
+       WHERE agreement_key=$1 AND active=true
+       ORDER BY effective_at DESC, created_at DESC
        LIMIT 1`,
-      [req.user.id, AGREEMENT_KEY]
+      [AGREEMENT_KEY]
     );
-    if (!result.rowCount) return res.status(404).json({ error: 'No active seller agreement is available' });
-    res.json({ agreement: result.rows[0] });
+    if (!agreement.rowCount) return res.status(404).json({ error: 'No active seller agreement is available' });
+
+    const seller = await pool.query(
+      `SELECT id
+       FROM seller_profiles
+       WHERE user_id=$1
+       LIMIT 1`,
+      [req.user.id]
+    );
+
+    let accepted = false;
+    if (seller.rowCount) {
+      const acceptance = await pool.query(
+        `SELECT 1
+         FROM seller_agreement_acceptances
+         WHERE seller_profile_id=$1 AND agreement_version_id=$2
+         LIMIT 1`,
+        [seller.rows[0].id, agreement.rows[0].id]
+      );
+      accepted = acceptance.rowCount > 0;
+    }
+
+    res.json({
+      agreement: {
+        id: agreement.rows[0].id,
+        version: agreement.rows[0].version,
+        title: agreement.rows[0].title,
+        effective_at: agreement.rows[0].effective_at,
+        accepted,
+      },
+    });
   } catch (error) { next(error); }
 });
 
