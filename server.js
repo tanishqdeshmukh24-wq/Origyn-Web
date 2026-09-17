@@ -128,7 +128,6 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/publishers', publisherRoutes);
 app.use('/api/me', meRoutes);
 app.use('/api/analytics', analyticsRoutes);
-
 app.use('/api/seller', sellerRoutes);
 app.use('/api/seller-public', sellerPublicRoutes);
 app.use('/api/seller-agreements', sellerAgreementRoutes);
@@ -158,22 +157,24 @@ app.use((error, _req, res, _next) => {
   });
 });
 
-const PORT = Number(process.env.PORT || 5000);
+if (require.main === module) {
+  const PORT = Number(process.env.PORT || 5000);
 
-const server = app.listen(PORT, () =>
-  console.log(`Origyn backend running on port ${PORT}`)
-);
+  const server = app.listen(PORT, () =>
+    console.log(`Origyn backend running on port ${PORT}`)
+  );
 
-async function shutdown(signal) {
-  console.log(`${signal} received; shutting down`);
+  async function shutdown(signal) {
+    console.log(`${signal} received; shutting down`);
 
-  server.close(async () => {
-    await pool.end();
-    process.exit(0);
-  });
+    server.close(async () => {
+      await pool.end();
+      process.exit(0);
+    });
+  }
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }
-
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT'));
 
 module.exports = app;
