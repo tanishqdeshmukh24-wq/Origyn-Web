@@ -246,6 +246,10 @@ test('current seller agreement must be accepted before a seller can publish, and
   assert.equal(dbActiveAgreement.rowCount, 1, JSON.stringify(dbActiveAgreement.rows));
   assert.equal(dbActiveAgreement.rows[0].id, agreementV2.rows[0].id, JSON.stringify(dbActiveAgreement.rows));
 
+  const current = await api(null, '/api/seller-agreements/current');
+  assert.equal(current.response.status, 200, JSON.stringify(current.body));
+  assert.equal(current.body.agreement.id, agreementV2.rows[0].id, JSON.stringify(current.body));
+
   const status = await api(token, '/api/seller-agreements/status');
   assert.equal(status.response.status, 200, JSON.stringify(status.body));
   assert.equal(status.body.agreement.accepted, false);
