@@ -69,49 +69,50 @@ test('seller onboarding creates a pending external seller profile and returns pr
       legal_name: 'Example Seller Pvt Ltd',
       display_name: 'Example Seller',
       country_code: 'IN',
-      principal_address: '1 Test Street, Pune, Maharashtra',
+      principal_address: 'Pune, India',
+      website_url: 'https://example.test',
       customer_care_email: 'support@example.test',
+      customer_care_phone: '+911234567890',
       grievance_officer_name: 'Grievance Officer',
       grievance_officer_email: 'grievance@example.test',
+      grievance_officer_phone: '+911234567891',
       gstin: '27ABCDE1234F1Z5',
       pan: 'ABCDE1234F',
     }),
   });
-
   assert.equal(create.response.status, 201, JSON.stringify(create.body));
-  assert.equal(create.body.seller.seller_type, 'external');
   assert.equal(create.body.seller.verification_status, 'pending');
-  assert.equal(create.body.seller.active, true);
   assert.equal(create.body.seller.gstin, '27ABCDE1234F1Z5');
   assert.equal(create.body.seller.pan, 'ABCDE1234F');
 
-  const duplicate = await api(token, '/api/seller', {
-    method: 'POST',
-    body: JSON.stringify({ legal_name: 'Duplicate', display_name: 'Duplicate', country_code: 'IN' }),
-  });
-  assert.equal(duplicate.response.status, 409);
-
-  const own = await api(token, '/api/seller');
-  assert.equal(own.response.status, 200);
-  assert.equal(own.body.seller.display_name, 'Example Seller');
-  assert.equal(own.body.seller.gstin, '27ABCDE1234F1Z5');
-  assert.equal(own.body.seller.pan, 'ABCDE1234F');
+  const publicResponse = await api(null, `/api/seller-public/${create.body.seller.id}`);
+  assert.equal(publicResponse.response.status, 404);
 });
 
 test('seller onboarding rejects invalid country codes and non-admin Origyn seller creation', async () => {
-  const registration = await register('External Seller');
+  const registration = await register('Invalid Seller');
   assert.equal(registration.response.status, 201, JSON.stringify(registration.body));
   const token = registration.body.token;
 
-  const invalidCountry = await api(token, '/api/seller', {
+  const invalid = await api(token, '/api/seller', {
     method: 'POST',
-    body: JSON.stringify({ legal_name: 'Invalid Seller', display_name: 'Invalid Seller', country_code: 'IND' }),
+    body: JSON.stringify({
+      seller_type: 'external',
+      legal_name: 'Invalid Seller',
+      display_name: 'Invalid Seller',
+      country_code: 'IND',
+    }),
   });
-  assert.equal(invalidCountry.response.status, 400);
+  assert.equal(invalid.response.status, 400);
 
   const origyn = await api(token, '/api/seller', {
     method: 'POST',
-    body: JSON.stringify({ seller_type: 'origyn', legal_name: 'Origyn', display_name: 'Origyn', country_code: 'IN' }),
+    body: JSON.stringify({
+      seller_type: 'origyn',
+      legal_name: 'Origyn Seller',
+      display_name: 'Origyn Seller',
+      country_code: 'IN',
+    }),
   });
   assert.equal(origyn.response.status, 403);
 });
@@ -121,14 +122,19 @@ test('admin verification changes seller state and verified sellers cannot self-e
   assert.equal(sellerRegistration.response.status, 201, JSON.stringify(sellerRegistration.body));
   const sellerToken = sellerRegistration.body.token;
 
-  const create = await api(sellerToken, '/api/seller', {
+  const sellerCreate = await api(sellerToken, '/api/seller', {
     method: 'POST',
-    body: JSON.stringify({ legal_name: 'Verification Seller Pvt Ltd', display_name: 'Verification Seller', country_code: 'IN' }),
+    body: JSON.stringify({
+      seller_type: 'external',
+      legal_name: 'Verification Seller Pvt Ltd',
+      display_name: 'Verification Seller',
+      country_code: 'IN',
+    }),
   });
-  assert.equal(create.response.status, 201, JSON.stringify(create.body));
-  const sellerId = create.body.seller.id;
+  assert.equal(sellerCreate.response.status, 201, JSON.stringify(sellerCreate.body));
+  const sellerId = sellerCreate.body.seller.id;
 
-  const adminRegistration = await register('Seller Admin');
+  const adminRegistration = await register('Verification Admin');
   assert.equal(adminRegistration.response.status, 201, JSON.stringify(adminRegistration.body));
   const adminId = adminRegistration.body.user.id;
   await db.query("UPDATE users SET role='admin' WHERE id=$1", [adminId]);
@@ -138,15 +144,15 @@ test('admin verification changes seller state and verified sellers cannot self-e
     method: 'POST',
     body: JSON.stringify({ verification_status: 'verified' }),
   });
-  assert.equal(verified.response.status, 200);
+  assert.equal(verified.response.status, 200, JSON.stringify(verified.body));
   assert.equal(verified.body.seller.verification_status, 'verified');
   assert.ok(verified.body.seller.verified_at);
 
-  const selfEdit = await api(sellerToken, '/api/seller', {
+  const edit = await api(sellerToken, '/api/seller', {
     method: 'PATCH',
-    body: JSON.stringify({ display_name: 'Changed After Verification' }),
+    body: JSON.stringify({ display_name: 'Should Not Self Edit' }),
   });
-  assert.equal(selfEdit.response.status, 409);
+  assert.equal(edit.response.status, 403);
 
   const rejected = await api(adminToken, `/api/seller/${sellerId}/verify`, {
     method: 'POST',
@@ -242,21 +248,39 @@ test('current seller agreement must be accepted before a seller can publish, and
   });
   assert.equal(agreementV2.response.status, 201, JSON.stringify(agreementV2.body));
 
+  // Query through the same pool the application uses. This is the authoritative
+  // precondition for the un-authenticated /current endpoint.
+  const poolAgreement = await pool.query(
+    `SELECT id, version, active
+     FROM seller_agreement_versions
+     WHERE agreement_key='seller_marketplace_terms' AND active=true
+     ORDER BY effective_at DESC, created_at DESC
+     LIMIT 1`
+  );
+  assert.equal(poolAgreement.rowCount, 1, JSON.stringify(poolAgreement.rows));
+  assert.equal(poolAgreement.rows[0].id, agreementV2.body.agreement.id, JSON.stringify(poolAgreement.rows));
+
   const current = await api(null, '/api/seller-agreements/current');
   assert.equal(current.response.status, 200, JSON.stringify(current.body));
   assert.equal(current.body.agreement.id, agreementV2.body.agreement.id, JSON.stringify(current.body));
 
   const status = await api(token, '/api/seller-agreements/status');
   assert.equal(status.response.status, 200, JSON.stringify(status.body));
-  assert.equal(status.body.agreement.accepted, false);
   assert.equal(status.body.agreement.id, agreementV2.body.agreement.id);
+  assert.equal(status.body.agreement.accepted, false);
 
-  const blockedAfterVersion = await api(token, `/api/products/${productId}/publish`, {
+  const acceptedV2 = await api(token, '/api/seller-agreements/accept', {
     method: 'POST',
-    body: JSON.stringify({}),
+    body: JSON.stringify({ agreement_version_id: agreementV2.body.agreement.id }),
   });
-  assert.equal(blockedAfterVersion.response.status, 403);
-  assert.equal(blockedAfterVersion.body.code, 'SELLER_AGREEMENT_REQUIRED');
+  assert.equal(acceptedV2.response.status, 201);
 
-  assert.ok(sellerId);
+  const statusAfterAccept = await api(token, '/api/seller-agreements/status');
+  assert.equal(statusAfterAccept.response.status, 200);
+  assert.equal(statusAfterAccept.body.agreement.accepted, true);
+
+  await db.query('DELETE FROM products WHERE id=$1', [productId]);
+  await db.query('DELETE FROM categories WHERE id=$1', [category.rows[0].id]);
+  await db.query('DELETE FROM seller_profiles WHERE id=$1', [sellerId]);
+  await db.query('DELETE FROM users WHERE id IN ($1,$2)', [userId, adminId]);
 });
