@@ -236,8 +236,18 @@ test('current seller agreement must be accepted before a seller can publish, and
     [`test-${crypto.randomUUID()}`]
   );
 
+  const dbActiveAgreement = await db.query(
+    `SELECT id, version, active
+     FROM seller_agreement_versions
+     WHERE agreement_key='seller_marketplace_terms' AND active=true
+     ORDER BY effective_at DESC, created_at DESC
+     LIMIT 1`
+  );
+  assert.equal(dbActiveAgreement.rowCount, 1, JSON.stringify(dbActiveAgreement.rows));
+  assert.equal(dbActiveAgreement.rows[0].id, agreementV2.rows[0].id, JSON.stringify(dbActiveAgreement.rows));
+
   const status = await api(token, '/api/seller-agreements/status');
-  assert.equal(status.response.status, 200);
+  assert.equal(status.response.status, 200, JSON.stringify(status.body));
   assert.equal(status.body.agreement.accepted, false);
   assert.equal(status.body.agreement.id, agreementV2.rows[0].id);
 
