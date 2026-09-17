@@ -1,15 +1,16 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
-const { spawn } = require('node:child_process');
+const http = require('node:http');
 const { Client } = require('pg');
+const app = require('../server');
+const pool = require('../src/config/db');
 
-const PORT = Number(process.env.SELLER_TEST_PORT || 5201);
-const BASE_URL = `http://127.0.0.1:${PORT}`;
 const JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret-32-characters-long';
 
-let child;
+let server;
 let db;
+let BASE_URL;
 
 async function api(token, path, options = {}) {
   const headers = { 'content-type': 'application/json', ...(options.headers || {}) };
@@ -33,40 +34,27 @@ async function register(name) {
   });
 }
 
-async function waitForServer() {
-  const deadline = Date.now() + 15000;
-  while (Date.now() < deadline) {
-    try {
-      const { response } = await api(null, '/api/health');
-      if (response.ok) return;
-    } catch {}
-    await new Promise(resolve => setTimeout(resolve, 250));
-  }
-  throw new Error('Backend did not become ready');
-}
-
 test.before(async () => {
   if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required for seller integration tests');
+  process.env.JWT_SECRET = JWT_SECRET;
   db = new Client({ connectionString: process.env.DATABASE_URL });
   await db.connect();
 
-  child = spawn(process.execPath, ['server.js'], {
-    env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL, PORT: String(PORT), JWT_SECRET },
-    cwd: process.cwd(),
-    stdio: ['ignore', 'pipe', 'pipe'],
+  server = http.createServer(app);
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => resolve());
   });
-  child.stderr.on('data', chunk => process.stderr.write(chunk));
-  await waitForServer();
+  BASE_URL = `http://127.0.0.1:${server.address().port}`;
+
+  const health = await api(null, '/api/health');
+  assert.equal(health.response.status, 200, JSON.stringify(health.body));
 });
 
 test.after(async () => {
-  if (child && !child.killed) {
-    await new Promise(resolve => {
-      child.once('exit', resolve);
-      child.kill('SIGTERM');
-    });
-  }
+  if (server) await new Promise(resolve => server.close(resolve));
   if (db) await db.end();
+  await pool.end();
 });
 
 test('seller onboarding creates a pending external seller profile and returns private tax identifiers only on the owner endpoint', async () => {
