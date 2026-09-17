@@ -22,10 +22,11 @@ async function api(token, path, options = {}) {
 }
 
 async function register(name) {
+  const localPart = String(name || 'user').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'user';
   return api(null, '/api/auth/register', {
     method: 'POST',
     body: JSON.stringify({
-      email: `${name}-${crypto.randomUUID()}@example.test`,
+      email: `${localPart}-${crypto.randomUUID()}@example.test`,
       password: 'Integration123',
       name,
     }),
@@ -64,7 +65,7 @@ test.after(async () => {
 
 test('seller onboarding creates a pending external seller profile and returns private tax identifiers only on the owner endpoint', async () => {
   const registration = await register('Seller Onboarding');
-  assert.equal(registration.response.status, 201);
+  assert.equal(registration.response.status, 201, JSON.stringify(registration.body));
   const token = registration.body.token;
 
   const create = await api(token, '/api/seller', {
@@ -105,7 +106,7 @@ test('seller onboarding creates a pending external seller profile and returns pr
 
 test('seller onboarding rejects invalid country codes and non-admin Origyn seller creation', async () => {
   const registration = await register('External Seller');
-  assert.equal(registration.response.status, 201);
+  assert.equal(registration.response.status, 201, JSON.stringify(registration.body));
   const token = registration.body.token;
 
   const invalidCountry = await api(token, '/api/seller', {
@@ -123,7 +124,7 @@ test('seller onboarding rejects invalid country codes and non-admin Origyn selle
 
 test('admin verification changes seller state and verified sellers cannot self-edit', async () => {
   const sellerRegistration = await register('Verification Seller');
-  assert.equal(sellerRegistration.response.status, 201);
+  assert.equal(sellerRegistration.response.status, 201, JSON.stringify(sellerRegistration.body));
   const sellerToken = sellerRegistration.body.token;
 
   const create = await api(sellerToken, '/api/seller', {
@@ -134,7 +135,7 @@ test('admin verification changes seller state and verified sellers cannot self-e
   const sellerId = create.body.seller.id;
 
   const adminRegistration = await register('Seller Admin');
-  assert.equal(adminRegistration.response.status, 201);
+  assert.equal(adminRegistration.response.status, 201, JSON.stringify(adminRegistration.body));
   const adminId = adminRegistration.body.user.id;
   await db.query("UPDATE users SET role='admin' WHERE id=$1", [adminId]);
   const adminToken = adminRegistration.body.token;
@@ -164,7 +165,7 @@ test('admin verification changes seller state and verified sellers cannot self-e
 
 test('current seller agreement must be accepted before a seller can publish, and a new version requires re-acceptance', async () => {
   const registration = await register('Agreement Seller');
-  assert.equal(registration.response.status, 201);
+  assert.equal(registration.response.status, 201, JSON.stringify(registration.body));
   const token = registration.body.token;
   const userId = registration.body.user.id;
 
