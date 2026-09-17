@@ -64,18 +64,20 @@ nav {
 
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
 }
 
 .logo {
     font-size: 28px;
     font-weight: 800;
     letter-spacing: -1.5px;
+    margin-top: 15px;
 }
 
 .nav-links {
     display: flex;
     align-items: center;
+    margin-top: 15px;
     gap: 25px;
 }
 
