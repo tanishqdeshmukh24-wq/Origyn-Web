@@ -51,7 +51,8 @@ test.before(async () => {
   await db.connect();
 
   child = spawn(process.execPath, ['server.js'], {
-    env: { ...process.env, PORT: String(PORT), JWT_SECRET },
+    env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL, PORT: String(PORT), JWT_SECRET },
+    cwd: process.cwd(),
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   child.stderr.on('data', chunk => process.stderr.write(chunk));
@@ -59,7 +60,12 @@ test.before(async () => {
 });
 
 test.after(async () => {
-  if (child && !child.killed) child.kill('SIGTERM');
+  if (child && !child.killed) {
+    await new Promise(resolve => {
+      child.once('exit', resolve);
+      child.kill('SIGTERM');
+    });
+  }
   if (db) await db.end();
 });
 
@@ -179,12 +185,22 @@ test('current seller agreement must be accepted before a seller can publish, and
   const sellerId = seller.rows[0].id;
 
   await db.query(`UPDATE seller_agreement_versions SET active=false WHERE agreement_key='seller_marketplace_terms' AND active=true`);
-  const agreementV1 = await db.query(
-    `INSERT INTO seller_agreement_versions (agreement_key, version, title, content, active)
-     VALUES ('seller_marketplace_terms',$1,'Seller Terms v1','Approved test terms v1',TRUE)
-     RETURNING id`,
-    [`test-${crypto.randomUUID()}`]
-  );
+
+  const adminRegistration = await register('Agreement Admin');
+  assert.equal(adminRegistration.response.status, 201, JSON.stringify(adminRegistration.body));
+  const adminId = adminRegistration.body.user.id;
+  await db.query("UPDATE users SET role='admin' WHERE id=$1", [adminId]);
+  const adminToken = adminRegistration.body.token;
+
+  const agreementV1 = await api(adminToken, '/api/seller-agreements/versions', {
+    method: 'POST',
+    body: JSON.stringify({
+      version: `test-${crypto.randomUUID()}`,
+      title: 'Seller Terms v1',
+      content: 'Approved test terms v1',
+    }),
+  });
+  assert.equal(agreementV1.response.status, 201, JSON.stringify(agreementV1.body));
 
   const category = await db.query(
     `INSERT INTO categories (name, slug) VALUES ($1,$2) RETURNING id`,
@@ -207,7 +223,7 @@ test('current seller agreement must be accepted before a seller can publish, and
 
   const accepted = await api(token, '/api/seller-agreements/accept', {
     method: 'POST',
-    body: JSON.stringify({ agreement_version_id: agreementV1.rows[0].id }),
+    body: JSON.stringify({ agreement_version_id: agreementV1.body.agreement.id }),
   });
   assert.equal(accepted.response.status, 201);
   assert.equal(accepted.body.accepted, true);
@@ -228,32 +244,24 @@ test('current seller agreement must be accepted before a seller can publish, and
   assert.equal(published.response.status, 200);
   assert.equal(published.body.status, 'published');
 
-  await db.query(`UPDATE seller_agreement_versions SET active=false WHERE id=$1`, [agreementV1.rows[0].id]);
-  const agreementV2 = await db.query(
-    `INSERT INTO seller_agreement_versions (agreement_key, version, title, content, active)
-     VALUES ('seller_marketplace_terms',$1,'Seller Terms v2','Approved test terms v2',TRUE)
-     RETURNING id`,
-    [`test-${crypto.randomUUID()}`]
-  );
-
-  const dbActiveAgreement = await db.query(
-    `SELECT id, version, active
-     FROM seller_agreement_versions
-     WHERE agreement_key='seller_marketplace_terms' AND active=true
-     ORDER BY effective_at DESC, created_at DESC
-     LIMIT 1`
-  );
-  assert.equal(dbActiveAgreement.rowCount, 1, JSON.stringify(dbActiveAgreement.rows));
-  assert.equal(dbActiveAgreement.rows[0].id, agreementV2.rows[0].id, JSON.stringify(dbActiveAgreement.rows));
+  const agreementV2 = await api(adminToken, '/api/seller-agreements/versions', {
+    method: 'POST',
+    body: JSON.stringify({
+      version: `test-${crypto.randomUUID()}`,
+      title: 'Seller Terms v2',
+      content: 'Approved test terms v2',
+    }),
+  });
+  assert.equal(agreementV2.response.status, 201, JSON.stringify(agreementV2.body));
 
   const current = await api(null, '/api/seller-agreements/current');
   assert.equal(current.response.status, 200, JSON.stringify(current.body));
-  assert.equal(current.body.agreement.id, agreementV2.rows[0].id, JSON.stringify(current.body));
+  assert.equal(current.body.agreement.id, agreementV2.body.agreement.id, JSON.stringify(current.body));
 
   const status = await api(token, '/api/seller-agreements/status');
   assert.equal(status.response.status, 200, JSON.stringify(status.body));
   assert.equal(status.body.agreement.accepted, false);
-  assert.equal(status.body.agreement.id, agreementV2.rows[0].id);
+  assert.equal(status.body.agreement.id, agreementV2.body.agreement.id);
 
   const blockedAfterVersion = await api(token, `/api/products/${productId}/publish`, {
     method: 'POST',
@@ -261,4 +269,6 @@ test('current seller agreement must be accepted before a seller can publish, and
   });
   assert.equal(blockedAfterVersion.response.status, 403);
   assert.equal(blockedAfterVersion.body.code, 'SELLER_AGREEMENT_REQUIRED');
+
+  assert.ok(sellerId);
 });
