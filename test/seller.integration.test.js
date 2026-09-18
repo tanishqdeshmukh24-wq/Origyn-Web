@@ -292,6 +292,7 @@ test('current seller agreement must be accepted before a seller can publish, and
 
   await db.query('DELETE FROM products WHERE id=$1', [productId]);
   await db.query('DELETE FROM categories WHERE id=$1', [category.rows[0].id]);
+  await db.query('DELETE FROM seller_agreement_acceptances WHERE seller_profile_id=$1', [sellerId]);
   await db.query('DELETE FROM seller_profiles WHERE id=$1', [sellerId]);
   await db.query('DELETE FROM publishers WHERE id=$1', [publisherId]);
   await db.query('DELETE FROM users WHERE id IN ($1,$2)', [userId, adminId]);
