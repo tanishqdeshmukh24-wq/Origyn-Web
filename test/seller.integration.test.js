@@ -178,6 +178,17 @@ test('current seller agreement must be accepted before a seller can publish, and
   );
   const sellerId = seller.rows[0].id;
 
+  // A seller may also publish products, so this fixture gives the same account
+  // a publisher profile. The product keeps separate seller_id and publisher_id
+  // ownership, matching Origyn's hybrid marketplace model.
+  const publisher = await db.query(
+    `INSERT INTO publishers (user_id, display_name, slug, verified)
+     VALUES ($1,'Agreement Seller Publisher',$2,TRUE)
+     RETURNING id`,
+    [userId, `agreement-seller-${crypto.randomUUID()}`]
+  );
+  const publisherId = publisher.rows[0].id;
+
   await db.query(`UPDATE seller_agreement_versions SET active=false WHERE agreement_key='seller_marketplace_terms' AND active=true`);
 
   const adminRegistration = await register('Agreement Admin');
@@ -201,10 +212,10 @@ test('current seller agreement must be accepted before a seller can publish, and
     [`Agreement Category ${crypto.randomUUID()}`, `agreement-${crypto.randomUUID()}`]
   );
   const product = await db.query(
-    `INSERT INTO products (seller_id, category_id, name, slug, description, product_type, price_paise, currency, status)
-     VALUES ($1,$2,$3,$4,'A publish-gate test product','digital',1000,'INR','draft')
+    `INSERT INTO products (seller_id, publisher_id, category_id, name, slug, description, product_type, price_paise, currency, status)
+     VALUES ($1,$2,$3,$4,$5,'A publish-gate test product','digital',1000,'INR','draft')
      RETURNING id`,
-    [userId, category.rows[0].id, `Agreement Product ${crypto.randomUUID()}`, `agreement-product-${crypto.randomUUID()}`]
+    [userId, publisherId, category.rows[0].id, `Agreement Product ${crypto.randomUUID()}`, `agreement-product-${crypto.randomUUID()}`]
   );
   const productId = product.rows[0].id;
 
@@ -282,5 +293,6 @@ test('current seller agreement must be accepted before a seller can publish, and
   await db.query('DELETE FROM products WHERE id=$1', [productId]);
   await db.query('DELETE FROM categories WHERE id=$1', [category.rows[0].id]);
   await db.query('DELETE FROM seller_profiles WHERE id=$1', [sellerId]);
+  await db.query('DELETE FROM publishers WHERE id=$1', [publisherId]);
   await db.query('DELETE FROM users WHERE id IN ($1,$2)', [userId, adminId]);
 });
