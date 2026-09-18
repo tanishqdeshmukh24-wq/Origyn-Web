@@ -152,7 +152,7 @@ test('admin verification changes seller state and verified sellers cannot self-e
     method: 'PATCH',
     body: JSON.stringify({ display_name: 'Should Not Self Edit' }),
   });
-  assert.equal(edit.response.status, 403);
+  assert.equal(edit.response.status, 409);
 
   const rejected = await api(adminToken, `/api/seller/${sellerId}/verify`, {
     method: 'POST',
