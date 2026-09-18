@@ -27,13 +27,18 @@ body.publisher-page .hero-primary{background:var(--origyn-blue);border-color:var
 body.publisher-page .hero-secondary{border-color:rgba(255,255,255,.2);background:transparent;border-radius:999px;color:#fff}.hero-secondary:hover{background:#fff;color:var(--origyn-ink)}
 body.publisher-page #story,body.publisher-page #about,body.publisher-page #publish{background:var(--origyn-paper);color:var(--origyn-ink)}
 body.publisher-page #story,body.publisher-page #sell,body.publisher-page #about,body.publisher-page #contact{min-height:100vh}
-body.publisher-page #sell,body.publisher-page #contact,body.publisher-page #my-products{background:var(--origyn-ink);color:#fff}
+body.publisher-page #sell,body.publisher-page #contact{background:var(--origyn-ink);color:#fff}
+body.publisher-page #my-products{background:var(--origyn-paper);color:var(--origyn-ink);margin-top:72px;padding:96px 0 0}
+body.publisher-page #my-products .submit-header{margin-bottom:42px}
+body.publisher-page #my-products .section-label{color:#8A8882}
+body.publisher-page #my-products h2{color:var(--origyn-ink)!important}
+body.publisher-page #my-products .submit-intro{color:var(--origyn-muted)!important}
 /* Dark-section contrast reset: never allow inherited dark text on the dark Figma sections. */
 body.publisher-page #sell h2,body.publisher-page #sell h3,body.publisher-page #sell h4,body.publisher-page #sell p,body.publisher-page #sell span,
 body.publisher-page #contact h2,body.publisher-page #contact h3,body.publisher-page #contact p,body.publisher-page #contact span,
-body.publisher-page #my-products h2,body.publisher-page #my-products h3,body.publisher-page #my-products h4,body.publisher-page #my-products p,body.publisher-page #my-products span{color:#fff}
+body.publisher-page #my-products h3,body.publisher-page #my-products h4,body.publisher-page #my-products p,body.publisher-page #my-products span{color:var(--origyn-ink)}
 body.publisher-page #sell .section-label,body.publisher-page #contact .section-label,body.publisher-page #my-products .section-label{color:rgba(255,255,255,.35)}
-body.publisher-page #sell .sell-content>p:not(.section-label),body.publisher-page #contact p:not(.section-label),body.publisher-page #my-products .submit-intro{color:rgba(255,255,255,.58)}
+body.publisher-page #sell .sell-content>p:not(.section-label),body.publisher-page #contact p:not(.section-label){color:rgba(255,255,255,.58)}
 body.publisher-page .delivery-scene{display:block;margin:0 0 48px;opacity:1}body.publisher-page .delivery-man,body.publisher-page .delivery-box,body.publisher-page .rock{display:none}
 body.publisher-page .tech-reveal{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;width:min(100%,800px)}
 body.publisher-page .tech-item{min-height:150px;padding:24px;display:flex;flex-direction:column;justify-content:flex-start;background:#fff;border:1px solid var(--origyn-line);border-radius:16px;color:var(--origyn-blue);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.15em;box-shadow:0 8px 28px rgba(13,15,20,.045)}
