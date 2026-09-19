@@ -23,11 +23,11 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    list.innerHTML = "<p>Loading your products...</p>";
+    list.innerHTML = "<p>Loading your product history...</p>";
 
     try {
       const response = await fetch(
-        `${API_BASE}/products?limit=100&publisher_id=${encodeURIComponent(user.publisher_id)}`,
+        `${API_BASE}/me/products?limit=100`,
         { headers: { "Authorization": "Bearer " + token } }
       );
 
@@ -41,22 +41,31 @@ document.addEventListener("DOMContentLoaded", () => {
       const products = result.data || [];
 
       if (!products.length) {
-        list.innerHTML = "<p>You haven't published any products yet.</p>";
+        list.innerHTML = "<p>You haven't created any products yet.</p>";
         return;
       }
 
-      list.innerHTML = products.map(product => `
-        <div class="my-product-card">
-          <div>
-            <h3>${escapeHtml(product.name || "Untitled product")}</h3>
-            <p>₹${(Number(product.price_paise || 0) / 100).toLocaleString("en-IN")}</p>
-            <span>${escapeHtml(product.status || "published")}</span>
+      list.innerHTML = products.map(product => {
+        const status = String(product.status || "draft");
+        const action = status === "published"
+          ? `<button type="button" data-archive-product="${product.id}">Archive</button>`
+          : status === "archived"
+            ? `<span class="product-history-note">Archived</span>`
+            : `<button type="button" data-delete-product="${product.id}">Delete</button>`;
+
+        return `
+          <div class="my-product-card">
+            <div>
+              <h3>${escapeHtml(product.name || "Untitled product")}</h3>
+              <p>₹${(Number(product.price_paise || 0) / 100).toLocaleString("en-IN")}</p>
+              <span>${escapeHtml(status)}</span>
+            </div>
+            <div class="my-product-actions">
+              ${action}
+            </div>
           </div>
-          <div class="my-product-actions">
-            <button type="button" data-archive-product="${product.id}">Archive</button>
-          </div>
-        </div>
-      `).join("");
+        `;
+      }).join("");
     } catch (error) {
       console.error("My products error:", error);
       list.innerHTML = "<p>Cannot connect to Origyn backend.</p>";
@@ -64,38 +73,48 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   list.addEventListener("click", async event => {
-    const button = event.target.closest("[data-archive-product]");
+    const archiveButton = event.target.closest("[data-archive-product]");
+    const deleteButton = event.target.closest("[data-delete-product]");
+    const button = archiveButton || deleteButton;
     if (!button) return;
 
     const token = localStorage.getItem("origynAccessToken");
-    const productId = button.dataset.archiveProduct;
+    const productId = button.dataset.archiveProduct || button.dataset.deleteProduct;
+    const isArchive = Boolean(archiveButton);
 
-    if (!confirm("Archive this product from the Origyn Store?")) return;
+    if (!confirm(isArchive
+      ? "Archive this product from the Origyn Store?"
+      : "Permanently delete this draft product?")) return;
 
     button.disabled = true;
-    button.textContent = "Archiving...";
+    button.textContent = isArchive ? "Archiving..." : "Deleting...";
 
     try {
-      const response = await fetch(`${API_BASE}/products/${productId}/archive`, {
-        method: "POST",
-        headers: { "Authorization": "Bearer " + token }
-      });
+      const response = await fetch(
+        isArchive
+          ? `${API_BASE}/products/${productId}/archive`
+          : `${API_BASE}/products/${productId}`,
+        {
+          method: isArchive ? "POST" : "DELETE",
+          headers: { "Authorization": "Bearer " + token }
+        }
+      );
 
       const data = response.status === 204 ? {} : await response.json();
 
       if (!response.ok) {
-        alert(data.error || "Failed to archive product.");
+        alert(data.error || (isArchive ? "Failed to archive product." : "Failed to delete product."));
         button.disabled = false;
-        button.textContent = "Archive";
+        button.textContent = isArchive ? "Archive" : "Delete";
         return;
       }
 
       await loadMyProducts();
     } catch (error) {
-      console.error("Archive error:", error);
+      console.error("Product history action error:", error);
       alert("Cannot connect to Origyn backend.");
       button.disabled = false;
-      button.textContent = "Archive";
+      button.textContent = isArchive ? "Archive" : "Delete";
     }
   });
 

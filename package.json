@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "check": "node --check server.js && node --check src/routes/auth.js && node --check src/routes/products.js && node --check src/services/productService.js"
+    "check": "node --check server.js && node --check src/routes/auth.js && node --check src/routes/products.js && node --check src/services/productService.js && node --check src/services/commerceService.js && node --check src/routes/seller.js && node --check src/routes/seller-public.js && node --check src/routes/seller-agreements.js && node --check src/routes/payouts.js && node --check src/routes/cart.js && node --check src/routes/wishlist.js && node --check src/routes/reviews.js && node --check src/routes/orders.js && node --check src/routes/payments.js && node --check src/routes/events.js",
+    "test": "node --test --test-concurrency=1 test/*.test.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

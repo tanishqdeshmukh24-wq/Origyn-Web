@@ -106,8 +106,11 @@ INSERT INTO categories (name, slug, is_featured) VALUES
 ON CONFLICT (slug) DO NOTHING;
 
 -- Initial commission defaults. These are starting policy values, not a legal/tax determination.
+-- Use an explicit existence check because PostgreSQL UNIQUE constraints treat NULLs as distinct,
+-- and product_type is intentionally NULL for category-wide default rules.
 INSERT INTO commission_rules (category_id, rate_percent)
-SELECT id, rate FROM (VALUES
+SELECT c.id, seed.rate
+FROM (VALUES
     ('technology', 8.00),
     ('fashion', 12.00),
     ('home-living', 10.00),
@@ -125,4 +128,9 @@ SELECT id, rate FROM (VALUES
     ('other', 10.00)
 ) AS seed(slug, rate)
 JOIN categories c ON c.slug = seed.slug
-ON CONFLICT DO NOTHING;
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM commission_rules cr
+    WHERE cr.category_id = c.id
+      AND cr.product_type IS NULL
+);

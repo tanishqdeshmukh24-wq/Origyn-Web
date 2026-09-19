@@ -1,0 +1,67 @@
+name: Origyn backend tests
+
+on:
+  push:
+    branches: [angad-backend, ninad-backend]
+  pull_request:
+    branches: [angad-backend, ninad-backend, master]
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: origyn
+          POSTGRES_PASSWORD: origyn
+          POSTGRES_DB: origyn_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U origyn -d origyn_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      DATABASE_URL: postgresql://origyn:origyn@localhost:5432/origyn_test
+      JWT_SECRET: test-jwt-secret-32-characters-long
+      PAYMENT_WEBHOOK_SECRET: test-webhook-secret
+      PAYMENT_PROVIDER: test-provider
+      NODE_ENV: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply database schema and migrations
+        run: |
+          for pass in 1 2; do
+            echo "Applying database schema/migrations (pass $pass)"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/schema.sql
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/001_core_platform_publisher_products.sql
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/002_commerce.sql
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/003_commerce_inventory_reservations.sql
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/004_seller_business_profiles.sql
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/005_seller_agreements.sql
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/006_order_seller_snapshots.sql
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/007_commission_ledger.sql
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/008_payout_architecture.sql
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/009_refund_payout_reconciliation.sql
+          done
+
+      - name: Syntax check
+        run: npm run check
+
+      - name: Integration tests
+        run: npm test
