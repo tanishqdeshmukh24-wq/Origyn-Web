@@ -186,6 +186,50 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
+  const syncServerCart = async (items) => {
+    if (!window.OrigynAPI.auth?.hasToken?.()) {
+      const error = new Error('Please sign in before checkout.');
+      error.status = 401;
+      throw error;
+    }
+
+    // The Store UI currently keeps its cart locally. Reconcile it to the
+    // authenticated server cart before checkout so the order service can
+    // remain server-authoritative for price, inventory, and fulfilment.
+    const serverCart = await window.OrigynAPI.get('/api/cart');
+    const localByProduct = new Map(items.map((item) => [item.product_id, item]));
+
+    for (const serverItem of (serverCart.items || [])) {
+      if (!localByProduct.has(serverItem.product_id)) {
+        await window.OrigynAPI.del(`/api/cart/items/${encodeURIComponent(serverItem.id)}`);
+      } else if (serverItem.variant_id) {
+        // The current Store cart has no variant selector. Remove stale
+        // variant-backed rows rather than accidentally ordering the wrong SKU.
+        await window.OrigynAPI.del(`/api/cart/items/${encodeURIComponent(serverItem.id)}`);
+      }
+    }
+
+    const refreshed = await window.OrigynAPI.get('/api/cart');
+    const existing = new Map(
+      (refreshed.items || []).map((item) => [item.product_id, item])
+    );
+
+    for (const item of items) {
+      const current = existing.get(item.product_id);
+      if (current) {
+        await window.OrigynAPI.patch(
+          `/api/cart/items/${encodeURIComponent(current.id)}`,
+          { quantity: item.quantity }
+        );
+      } else {
+        await window.OrigynAPI.post('/api/cart/items', {
+          product_id: item.product_id,
+          quantity: item.quantity
+        });
+      }
+    }
+  };
+
   const placeOrder = async () => {
     const items = cart();
     if (!items.length) {
@@ -203,6 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       const shippingAddress = needsShipping(items) ? shippingFromForm() : null;
+      await syncServerCart(items);
       const order = await window.OrigynAPI.post('/api/orders', { shipping_address: shippingAddress }, {
         headers: { 'Idempotency-Key': checkoutKey }
       });
