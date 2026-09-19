@@ -136,6 +136,20 @@ test('authenticated commerce flow preserves server authority', async () => {
   assert.equal(checkout.body.payment_status, 'pending');
   assert.equal(checkout.body.fulfilment_status, 'pending');
 
+  const initiate = await api(`/api/payments/orders/${orderId}/initiate`, {
+    method: 'POST'
+  });
+  assert.equal(initiate.response.status, 201);
+  assert.equal(initiate.body.payment.order_id, orderId);
+  assert.equal(initiate.body.payment.provider, 'test-provider');
+  assert.equal(Number(initiate.body.payment.amount_paise), 399800);
+
+  const initiateReplay = await api(`/api/payments/orders/${orderId}/initiate`, {
+    method: 'POST'
+  });
+  assert.equal(initiateReplay.response.status, 201);
+  assert.equal(initiateReplay.body.payment.id, initiate.body.payment.id);
+
   const stockBeforePayment = await db.query('SELECT stock FROM products WHERE id=$1', [productId]);
   assert.equal(Number(stockBeforePayment.rows[0].stock), 5, 'inventory must not be consumed before payment capture');
   const reservation = await db.query("SELECT quantity,status FROM commerce_inventory_reservations WHERE order_id=$1", [orderId]);
