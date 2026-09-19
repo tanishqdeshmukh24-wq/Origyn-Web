@@ -172,10 +172,67 @@ document.addEventListener('DOMContentLoaded', () => {
     return order;
   };
 
+  const loadRazorpay = () => new Promise((resolve, reject) => {
+    if (window.Razorpay) return resolve();
+    const existing = document.querySelector('script[data-origyn-razorpay]');
+    if (existing) {
+      existing.addEventListener('load', resolve, { once: true });
+      existing.addEventListener('error', () => reject(new Error('Razorpay Checkout could not be loaded.')), { once: true });
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.dataset.origynRazorpay = 'true';
+    script.onload = resolve;
+    script.onerror = () => reject(new Error('Razorpay Checkout could not be loaded.'));
+    document.head.appendChild(script);
+  });
+
+  const openRazorpayCheckout = async (order, checkout) => {
+    await loadRazorpay();
+    return new Promise((resolve) => {
+      const instance = new window.Razorpay({
+        key: checkout.key_id,
+        amount: checkout.amount_paise,
+        currency: checkout.currency,
+        name: 'Origyn',
+        description: `Origyn Order ${order.id}`,
+        order_id: checkout.razorpay_order_id,
+        handler: async (response) => {
+          try {
+            await window.OrigynAPI.post(`/api/payments/orders/${encodeURIComponent(order.id)}/verify`, {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature
+            });
+          } catch (error) {
+            showStatus('Payment verification failed', error.message || 'Origyn could not verify the payment.', order, 'error');
+            resolve();
+            return;
+          }
+          await refreshOrder();
+          resolve();
+        },
+        modal: {
+          ondismiss: () => {
+            showStatus('Payment window closed', 'The order remains pending until Origyn receives a valid payment confirmation.', order);
+            resolve();
+          }
+        }
+      });
+      instance.open();
+    });
+  };
+
   const initiatePayment = async (order) => {
     activeOrderId = order.id;
     try {
-      await window.OrigynAPI.post(`/api/payments/orders/${encodeURIComponent(order.id)}/initiate`, {});
+      const result = await window.OrigynAPI.post(`/api/payments/orders/${encodeURIComponent(order.id)}/initiate`, {});
+      if (result.checkout?.provider === 'razorpay') {
+        await openRazorpayCheckout(order, result.checkout);
+        return;
+      }
       await refreshOrder();
     } catch (error) {
       if (error.status === 503) {
