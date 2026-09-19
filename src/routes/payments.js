@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const pool = require('../config/db');
 const { authenticate, requireRole } = require('../middleware/auth');
 const { finalizeCapturedPayment, releaseOrderReservations, httpError } = require('../services/commerceService');
+const razorpay = require('../services/razorpayProvider');
 const router = express.Router();
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -36,6 +37,81 @@ function configuredProvider() {
   if (!provider || provider.length > MAX_PROVIDER_LENGTH) return null;
   return provider;
 }
+
+
+router.post('/orders/:orderId/verify', authenticate, async (req, res, next) => {
+  try {
+    if (configuredProvider() !== 'razorpay') return res.status(409).json({ error: 'Razorpay provider is not active' });
+    const orderId = requireUuid(req.params.orderId, 'order id');
+    const { razorpay_order_id: providerOrderId, razorpay_payment_id: providerPaymentId, razorpay_signature: signature } = req.body || {};
+    if (!providerOrderId || !providerPaymentId || !signature) {
+      return res.status(400).json({ error: 'Razorpay payment verification fields are required' });
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const result = await client.query(`
+        SELECT p.*, o.payment_status, o.status AS order_status, o.customer_id
+        FROM payments p
+        JOIN orders o ON o.id = p.order_id
+        WHERE p.order_id = $1 AND o.customer_id = $2
+        FOR UPDATE OF p, o
+      `, [orderId, req.user.id]);
+      if (!result.rowCount) throw Object.assign(new Error('Order or payment not found'), { status: 404 });
+      const payment = result.rows[0];
+      const providerPayload = payment.provider_payload || {};
+      if (payment.provider !== 'razorpay' || providerPayload.razorpay_order_id !== providerOrderId) {
+        throw Object.assign(new Error('Razorpay order mismatch'), { status: 409 });
+      }
+      if (!razorpay.verifyPaymentSignature({ orderId: providerOrderId, paymentId: providerPaymentId, signature })) {
+        throw Object.assign(new Error('Invalid Razorpay payment signature'), { status: 401 });
+      }
+
+      const remote = await razorpay.fetchPayment(providerPaymentId);
+      if (!remote || remote.order_id !== providerOrderId ||
+          Number(remote.amount) !== Number(payment.amount_paise) ||
+          String(remote.currency).toUpperCase() !== String(payment.currency).toUpperCase()) {
+        throw Object.assign(new Error('Razorpay payment details do not match the Origyn payment'), { status: 409 });
+      }
+
+      if (remote.status === 'captured') {
+        await finalizeCapturedPayment(client, orderId, providerPaymentId, remote);
+      } else if (remote.status === 'authorized') {
+        await client.query(`
+          UPDATE payments
+          SET provider_payment_id = $1, status = 'authorized', provider_payload = $2::jsonb, updated_at = NOW()
+          WHERE id = $3
+        `, [providerPaymentId, JSON.stringify(remote), payment.id]);
+        await client.query(`
+          UPDATE orders SET payment_status='authorized', updated_at=NOW() WHERE id=$1
+        `, [orderId]);
+      } else if (remote.status === 'failed') {
+        await client.query(`
+          UPDATE payments
+          SET provider_payment_id = $1, status = 'failed', provider_payload = $2::jsonb, updated_at = NOW()
+          WHERE id = $3
+        `, [providerPaymentId, JSON.stringify(remote), payment.id]);
+        await client.query(`
+          UPDATE orders SET payment_status='failed', status='cancelled', fulfilment_status='cancelled', updated_at=NOW() WHERE id=$1
+        `, [orderId]);
+        await releaseOrderReservations(client, orderId, 'released');
+      } else {
+        throw Object.assign(new Error(`Unsupported Razorpay payment status: ${remote.status || 'unknown'}`), { status: 409 });
+      }
+
+      await client.query('COMMIT');
+      return res.json({ ok: true, provider_payment_id: providerPaymentId });
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw error;
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.post('/orders/:orderId/initiate', authenticate, async (req, res, next) => {
   try {
@@ -83,15 +159,40 @@ router.post('/orders/:orderId/initiate', authenticate, async (req, res, next) =>
         return res.status(409).json({ error: 'Inventory reservation has expired; please create a new checkout' });
       }
 
+      let providerPayload = null;
+      let checkout = null;
+      if (provider === 'razorpay') {
+        const existingPayload = payment.provider_payload || {};
+        let providerOrder = existingPayload.razorpay_order_id ? { id: existingPayload.razorpay_order_id } : null;
+        if (!providerOrder) {
+          providerOrder = await razorpay.createOrder({
+            amountPaise: Number(payment.amount_paise),
+            currency: String(payment.currency).toUpperCase(),
+            receipt: `origyn-${payment.order_id}`,
+            notes: { origyn_order_id: payment.order_id }
+          });
+        }
+        providerPayload = { ...existingPayload, razorpay_order_id: providerOrder.id };
+        checkout = {
+          provider: 'razorpay',
+          key_id: String(process.env.RAZORPAY_KEY_ID || '').trim(),
+          razorpay_order_id: providerOrder.id,
+          amount_paise: Number(payment.amount_paise),
+          currency: String(payment.currency).toUpperCase()
+        };
+      }
+
       const updated = await client.query(`
         UPDATE payments
-        SET provider = $1, status = 'pending', updated_at = NOW()
-        WHERE id = $2
+        SET provider = $1, status = 'pending',
+            provider_payload = CASE WHEN $2::jsonb IS NULL THEN provider_payload ELSE $2::jsonb END,
+            updated_at = NOW()
+        WHERE id = $3
         RETURNING id, order_id, provider, amount_paise, currency, status, created_at
-      `, [provider, payment.id]);
+      `, [provider, providerPayload ? JSON.stringify(providerPayload) : null, payment.id]);
 
       await client.query('COMMIT');
-      return res.status(201).json({ payment: updated.rows[0] });
+      return res.status(201).json({ payment: updated.rows[0], checkout });
     } catch (error) {
       await client.query('ROLLBACK').catch(() => {});
       throw error;
