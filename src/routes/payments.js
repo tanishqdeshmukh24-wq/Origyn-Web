@@ -80,7 +80,7 @@ router.post('/orders/:orderId/verify', authenticate, async (req, res, next) => {
       } else if (remote.status === 'authorized') {
         await client.query(`
           UPDATE payments
-          SET provider_payment_id = $1, status = 'authorized', provider_payload = $2::jsonb, updated_at = NOW()
+          SET provider_payment_id = $1, status = 'authorized', provider_payload = COALESCE(provider_payload, '{}'::jsonb) || $2::jsonb, updated_at = NOW()
           WHERE id = $3
         `, [providerPaymentId, JSON.stringify(remote), payment.id]);
         await client.query(`
@@ -216,6 +216,8 @@ router.post('/webhooks/razorpay', async (req, res, next) => {
 
     const event = razorpay.eventToPayment(req.body);
     if (!event) return res.status(400).json({ error: 'Unsupported or malformed Razorpay webhook' });
+    const eventId = String(req.get('x-razorpay-event-id') || '').trim();
+    if (eventId.length > 255) return res.status(400).json({ error: 'Invalid Razorpay event ID' });
 
     const client = await pool.connect();
     try {
@@ -230,6 +232,12 @@ router.post('/webhooks/razorpay', async (req, res, next) => {
       `, [event.order_id]);
       if (!paymentResult.rowCount) throw Object.assign(new Error('Origyn payment for Razorpay order not found'), { status: 404 });
       const stored = paymentResult.rows[0];
+      const storedPayload = stored.provider_payload || {};
+      const processedEventIds = Array.isArray(storedPayload.razorpay_event_ids) ? storedPayload.razorpay_event_ids : [];
+      if (eventId && processedEventIds.includes(eventId)) {
+        await client.query('COMMIT');
+        return res.json({ ok: true, duplicate: true });
+      }
 
       if (Number(event.amount_paise) !== Number(stored.amount_paise) ||
           String(event.currency).toUpperCase() !== String(stored.currency).toUpperCase()) {
@@ -263,6 +271,17 @@ router.post('/webhooks/razorpay', async (req, res, next) => {
           `, [stored.order_id]);
           await releaseOrderReservations(client, stored.order_id, 'released');
         }
+      }
+
+      if (eventId) {
+        const refreshed = await client.query('SELECT provider_payload FROM payments WHERE id=$1 FOR UPDATE', [stored.id]);
+        const currentPayload = refreshed.rows[0]?.provider_payload || {};
+        const currentEventIds = Array.isArray(currentPayload.razorpay_event_ids) ? currentPayload.razorpay_event_ids : [];
+        const nextEventIds = currentEventIds.includes(eventId) ? currentEventIds : [...currentEventIds, eventId].slice(-50);
+        await client.query(
+          `UPDATE payments SET provider_payload = $1::jsonb, updated_at=NOW() WHERE id=$2`,
+          [JSON.stringify({ ...currentPayload, razorpay_event_ids: nextEventIds }), stored.id]
+        );
       }
 
       await client.query('COMMIT');
@@ -491,7 +510,7 @@ router.post('/webhooks/:provider', async (req, res, next) => {
         await client.query(
           `UPDATE payments
            SET provider = $1, provider_payment_id = COALESCE($2, provider_payment_id), status = $3,
-               provider_payload = $4::jsonb, updated_at = NOW()
+               provider_payload = COALESCE(provider_payload, '{}'::jsonb) || $4::jsonb, updated_at = NOW()
            WHERE id = $5`,
           [provider, providerPaymentId || null, newStatus, JSON.stringify(body), stored.id]
         );
