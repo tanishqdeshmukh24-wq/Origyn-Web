@@ -204,6 +204,80 @@ router.post('/orders/:orderId/initiate', authenticate, async (req, res, next) =>
   }
 });
 
+router.post('/webhooks/razorpay', async (req, res, next) => {
+  try {
+    if (configuredProvider() !== 'razorpay') return res.status(409).json({ error: 'Razorpay provider is not active' });
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    if (!secret) return res.status(503).json({ error: 'Razorpay webhook verification is not configured' });
+    const signature = req.get('x-razorpay-signature') || '';
+    if (!razorpay.verifyWebhookSignature(req.rawBody, signature, secret)) {
+      return res.status(401).json({ error: 'Invalid Razorpay webhook signature' });
+    }
+
+    const event = razorpay.eventToPayment(req.body);
+    if (!event) return res.status(400).json({ error: 'Unsupported or malformed Razorpay webhook' });
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const paymentResult = await client.query(`
+        SELECT p.*, o.id AS internal_order_id
+        FROM payments p
+        JOIN orders o ON o.id = p.order_id
+        WHERE p.provider = 'razorpay'
+          AND p.provider_payload->>'razorpay_order_id' = $1
+        FOR UPDATE OF p, o
+      `, [event.order_id]);
+      if (!paymentResult.rowCount) throw Object.assign(new Error('Origyn payment for Razorpay order not found'), { status: 404 });
+      const stored = paymentResult.rows[0];
+
+      if (Number(event.amount_paise) !== Number(stored.amount_paise) ||
+          String(event.currency).toUpperCase() !== String(stored.currency).toUpperCase()) {
+        throw Object.assign(new Error('Razorpay payment amount or currency mismatch'), { status: 409 });
+      }
+      if (stored.provider_payment_id && stored.provider_payment_id !== event.provider_payment_id) {
+        throw Object.assign(new Error('Razorpay payment ID mismatch'), { status: 409 });
+      }
+
+      if (event.status === 'captured') {
+        await finalizeCapturedPayment(client, stored.order_id, event.provider_payment_id, event.payload);
+      } else if (event.status === 'authorized') {
+        if (stored.status === 'pending' || stored.status === 'authorized') {
+          await client.query(`
+            UPDATE payments
+            SET provider_payment_id=$1,status='authorized',provider_payload=$2::jsonb,updated_at=NOW()
+            WHERE id=$3
+          `, [event.provider_payment_id, JSON.stringify(event.payload), stored.id]);
+          await client.query(`UPDATE orders SET payment_status='authorized',updated_at=NOW() WHERE id=$1`, [stored.order_id]);
+        }
+      } else if (event.status === 'failed') {
+        if (['pending','authorized'].includes(stored.status)) {
+          await client.query(`
+            UPDATE payments
+            SET provider_payment_id=$1,status='failed',provider_payload=$2::jsonb,updated_at=NOW()
+            WHERE id=$3
+          `, [event.provider_payment_id, JSON.stringify(event.payload), stored.id]);
+          await client.query(`
+            UPDATE orders SET payment_status='failed',status='cancelled',fulfilment_status='cancelled',updated_at=NOW()
+            WHERE id=$1
+          `, [stored.order_id]);
+          await releaseOrderReservations(client, stored.order_id, 'released');
+        }
+      }
+
+      await client.query('COMMIT');
+      return res.json({ ok: true });
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw error;
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.post('/webhooks/:provider', async (req, res, next) => {
   try {
     const secret = process.env.PAYMENT_WEBHOOK_SECRET;
