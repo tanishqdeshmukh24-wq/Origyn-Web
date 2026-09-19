@@ -211,7 +211,7 @@ async function finalizeCapturedPayment(client,orderId,providerPaymentId=null,pro
       await client.query("UPDATE commerce_inventory_reservations SET status='consumed',updated_at=NOW() WHERE id=$1",[reservation.id]);
     }
   }
-  await client.query(`UPDATE payments SET status='captured',provider_payment_id=COALESCE($1,provider_payment_id),provider_payload=$2::jsonb,updated_at=NOW() WHERE id=$3`,[providerPaymentId,JSON.stringify(providerPayload),payment.id]);
+  await client.query(`UPDATE payments SET status='captured',provider_payment_id=COALESCE($1,provider_payment_id),provider_payload=COALESCE(provider_payload,'{}'::jsonb) || $2::jsonb,updated_at=NOW() WHERE id=$3`,[providerPaymentId,JSON.stringify(providerPayload),payment.id]);
   const fulfilmentStatus=items.rows.some(x=>x.product_type==='physical')?'pending':'completed';
   await client.query(`UPDATE orders SET payment_status='paid',status=CASE WHEN status='pending' THEN 'confirmed' ELSE status END,fulfilment_status=$1,updated_at=NOW() WHERE id=$2`,[fulfilmentStatus,orderId]);
   return {alreadyFinalized:false};
