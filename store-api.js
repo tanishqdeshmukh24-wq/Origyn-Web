@@ -251,6 +251,18 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // Capture-phase handlers prevent the old demo Store listeners from fighting the API-backed Store.
+  window.OrigynStore = {
+    getCart: () => cart.map((item) => ({
+      product_id: item.p.id,
+      name: item.p.n,
+      product_type: item.p.type,
+      quantity: item.q,
+      unit_price_paise: item.p.p,
+      image: item.p.image || ''
+    })),
+    clearCart: () => { cart = []; renderCart(); }
+  };
+
   document.addEventListener('click', (event) => {
     const filterButton = event.target.closest('.quick-filters .filter');
     const categoryButton = event.target.closest('[data-category]');
